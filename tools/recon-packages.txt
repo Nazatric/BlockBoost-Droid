@@ -1,0 +1,13 @@
+# Package prefixes to enumerate from the Minecraft 26.1.2 jar. Used by
+# `./gradlew dumpMinecraftApi` to discover the real class names for subsystems
+# (chunk pipeline, video settings, render state) before hooking them.
+net/minecraft/client/renderer/chunk/
+net/minecraft/client/renderer/culling/
+net/minecraft/client/renderer/entity/
+net/minecraft/client/renderer/blockentity/
+net/minecraft/client/renderer/state/
+net/minecraft/client/particle/
+net/minecraft/client/gui/components/
+net/minecraft/client/gui/screens/
+net/minecraft/client/renderer/
+net/minecraft/client/

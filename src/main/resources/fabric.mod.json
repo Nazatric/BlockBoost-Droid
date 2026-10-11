@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "id": "blockboost",
+  "version": "${version}",
+  "name": "BlockBoost - Android Performance Engine",
+  "description": "An Android-first performance engine for Minecraft Java on Fabric: visibility culling, bounded chunk and worker scheduling, particle ceilings, frame pacing, an adaptive thermal governor, real diagnostics and a touch-friendly settings screen. Works standalone; cooperates with Sodium and friends when they are installed.",
+  "authors": [
+    "Nazatric"
+  ],
+  "contact": {
+    "homepage": "https://github.com/Nazatric/BlockBoost-Droid",
+    "sources": "https://github.com/Nazatric/BlockBoost-Droid",
+    "issues": "https://github.com/Nazatric/BlockBoost-Droid/issues"
+  },
+  "license": "MIT",
+  "icon": "assets/blockboost/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "main": [
+      "dev.blockboost.BlockBoostMod"
+    ],
+    "client": [
+      "dev.blockboost.client.BlockBoostClient"
+    ],
+    "modmenu": [
+      "dev.blockboost.client.compat.BlockBoostModMenuApiImpl"
+    ]
+  },
+  "mixins": [
+    {
+      "config": "blockboost.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.1.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
+  }
+}
