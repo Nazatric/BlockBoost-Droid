@@ -513,13 +513,4 @@ public final class BlockBoostSettingsScreen extends Screen {
         }
     }
 
-    /**
-     * The game keeps ticking while this is open. Half of what the report says about
-     * frame time would be meaningless if the client paused, and on a phone the extra
-     * seconds spent in a menu are seconds of heat.
-     */
-    @Override
-    public boolean shouldPause() {
-        return false;
-    }
 }

@@ -101,11 +101,6 @@ public final class InfoScreen extends Screen {
     }
 
     @Override
-    public boolean shouldPause() {
-        return false;
-    }
-
-    @Override
     public void onClose() {
         if (this.minecraft != null) {
             this.minecraft.setScreen(back);

@@ -122,17 +122,19 @@ public final class PerformanceHud {
     }
 
     /**
-     * GUI-space size, derived from the framebuffer and the window's own scale factor.
-     * Reading {@code getGuiScaledWidth()} would be nicer, but the framebuffer pair is
-     * what the window layer guarantees, and dividing by a scale we did not choose keeps
-     * the overlay aligned with vanilla HUD elements on any launcher DPI setting.
+     * GUI-space size: the window's pixel size divided by the GUI scale, which is how the
+     * game's own docs compute it. Dividing by a scale we did not choose is what keeps the
+     * overlay aligned with vanilla HUD elements whatever the launcher's DPI or translator
+     * settings are, and it is why the corner maths below needs no other input.
      */
     private static int graphicsWidth(Minecraft client) {
-        return (int) (client.getWindow().getFramebufferWidth() / (double) client.getWindow().getGuiScale());
+        var window = client.getWindow();
+        return window == null ? 427 : window.getWidth() / Math.max(1, window.getGuiScale());
     }
 
     private static int graphicsHeight(Minecraft client) {
-        return (int) (client.getWindow().getFramebufferHeight() / (double) client.getWindow().getGuiScale());
+        var window = client.getWindow();
+        return window == null ? 240 : window.getHeight() / Math.max(1, window.getGuiScale());
     }
 
     private static String fmt(double v) {

@@ -195,10 +195,6 @@ public final class ClientServices implements FeatureEnvironment, AutoCloseable {
             }
             BlockBoostRuntime.get().registry().refresh();
         }
-        AdaptiveController a = this.adaptive;
-        if (a != null) {
-            a.onFrameEnd();
-        }
     }
 
     public boolean isWindowHidden(Minecraft client) {
@@ -217,7 +213,7 @@ public final class ClientServices implements FeatureEnvironment, AutoCloseable {
             visibility.onWorldChange(ticks.get());
             chunkStats.reset();
         } else {
-            visibility.invalidateAll();
+            visibility.invalidateAll("left the level");
             chunkStats.reset();
             if (settings.bool(ConfigSchema.MEM_RELEASE_ON_EXIT)) {
                 scratch.release();

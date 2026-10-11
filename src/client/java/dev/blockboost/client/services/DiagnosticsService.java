@@ -259,7 +259,7 @@ public final class DiagnosticsService implements FeatureRuntimeContext.FeatureDi
         sb.append('\n').append(device.heapSummary());
         var a = services.adaptive();
         if (a != null) {
-            String line = a.status();
+            String line = a.describe();
             if (line != null) {
                 sb.append('\n').append(line);
             }
