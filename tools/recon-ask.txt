@@ -1,25 +1,27 @@
 # Questions asked of the javap dump produced by ./gradlew dumpMinecraftApi.
-# One per line:  ClassRegex##MemberRegex   (lines starting with # are ignored)
-# The CI reporter answers these and posts the result to the build issue, which is
-# how this repository verifies mixin targets without a local JDK or Maven access.
-# Keep this list short and sharp: the answer is size-capped, so broad regexes push
-# the useful answers off the end.
-net\.minecraft\.world\.level\.block\.state\.BlockState##isSolid|isOpaque|canOcclude|isValidModel|isFaceSturdy|isAir|emitsLight
-net\.minecraft\.world\.entity\.Entity##public int getId|getBoundingBox|getCustomName|shouldShowName|getRootVehicle|xOld|public double getX|public .* position
-net\.minecraft\.core\.BlockPos##public BlockPos\(|containing|public int getX
-net\.minecraft\.client\.gui\.Font##width|lineHeight|drawString
-net\.minecraft\.client\.gui\.GuiGraphicsExtractor##text|fill
-net\.minecraft\.resources\.Identifier##public static
-net\.minecraft\.util\.Mth##lerp|clamp
-net\.minecraft\.client\.Camera##getPosition|getPosition\(\)
-net\.minecraft\.client\.Minecraft##public void stop|isPaused|public final net.minecraft.client.gui.Font|getCameraEntity|public net.minecraft.client.multiplayer.ClientLevel|public .* player;|levelRenderer
-net\.minecraft\.client\.renderer\.LevelRenderer##allChanged|needsUpdate|setLevel|extractEntity|extractBlockEntities
-net\.minecraft\.client\.particle\.Particle##public double|public float|getParticleLimit
-net\.minecraft\.client\.renderer\.chunk\..*##public|class
-net\.minecraft\.client\.renderer\.GameRenderer##renderLevel|render\(|extract
-net\.minecraft\.client\.multiplayer\.ClientLevel##getBlockState|entitiesForRendering|getEntity\(|getState
-net\.minecraft\.client\.gui\.components\.Slider##.*
-net\.minecraft\.client\.gui\.components\.AbstractSliderButton##.*
-net\.minecraft\.client\.gui\.components\.EditBox##public net|EditBox\(
-net\.com\.vlansky?\.vulkan##.*
-net\.optifine##.*
+# One per line:  ClassRegex##MemberRegex   (# lines ignored)
+# The reporter answers each in order against the real 26.1.2 jar, capped per question
+# and overall, so list only what this project is about to call - in priority order.
+# An absent answer means the class regex found no section in the dump (see
+# tools/recon-classes.txt for what the dump covers), not that the member is missing.
+
+net\.minecraft\.client\.Minecraft##Font |getFont|public void stop|public void close|isPaused|public net.minecraft.client.multiplayer.ClientLevel|public net.minecraft.client.player.LocalPlayer|getMainWindow
+
+net\.minecraft\.client\.renderer\.chunk\..*##^class |^public class
+
+net\.minecraft\.client\.Options##getEffective|save\(|gamma|language|chatOpacity|aoMode|graphicsMode|fullscreen
+
+net\.minecraft\.client\.player\.(Abstract|Local)Player##public
+
+net\.minecraft\.client\.gui\.components\.(Slider|AbstractSliderButton)##public
+
+net\.minecraft\.client\.gui\.components\.EditBox##EditBox\(|public
+
+net\.minecraft\.client\.gui\.components\.Button\$Builder##bounds|create
+
+net\.minecraft\.client\.gui\.components\.CycleButton##public
+
+net\.minecraft\.client\.Window##public|getWidth|getHeight|getGuiScale|getFramebufferWidth|setVsync
+
+net\.minecraft\.client\.multiplayer\.ClientLevel##getBlockState|entitiesForRendering|getEntity\(|isClientSide
+

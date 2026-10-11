@@ -282,7 +282,7 @@ public final class BlockBoostClient implements ClientModInitializer {
             // keybind may not be reachable without the launcher's keyboard.
             client.player.sendSystemMessage(Component.literal(
                     "[BlockBoost] settings: press O, or Mod Menu -> BlockBoost. Config: "
-                            + runtime.configPath());
+                            + runtime.configPath()));
             return;
         }
         if (client.player == null) {
@@ -333,6 +333,9 @@ public final class BlockBoostClient implements ClientModInitializer {
 
     /** Called by the frame hook when the wall-clock bench limit expires. */
     public static boolean benchExpired(Minecraft client) {
+        if (services == null) {
+            return false;
+        }
         if (benchDeadlineNanos != 0 && System.nanoTime() >= benchDeadlineNanos) {
             benchDeadlineNanos = 0;
             try {
@@ -341,7 +344,10 @@ public final class BlockBoostClient implements ClientModInitializer {
             } catch (RuntimeException e) {
                 BlockBoost.LOG.warn("[BlockBoost] timed benchmark write failed", e);
             }
-            client.stop();
+            // Deliberately a plain exit rather than Minecraft#stop(): the shutdown
+            // path the game uses touches the renderer and the window, and in a
+            // headless or driver-broken session that can hang a benchmark run.
+            System.exit(0);
             return true;
         }
         return false;

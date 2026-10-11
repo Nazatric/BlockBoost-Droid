@@ -4,14 +4,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.core.BlockPos;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.world.level.block.state.BlockState;
 
 import dev.blockboost.BlockBoost;
 import dev.blockboost.BlockBoostRuntime;
 import dev.blockboost.client.adaptive.AdaptiveController;
 import dev.blockboost.client.culling.AsyncVisibilityEngine;
+import dev.blockboost.client.culling.LevelProbes;
 import dev.blockboost.client.services.ChunkPipelineStats;
 import dev.blockboost.client.services.DiagnosticsService;
 import dev.blockboost.client.services.FrameSampler;
@@ -66,6 +65,7 @@ public final class ClientServices implements FeatureEnvironment, AutoCloseable {
     private volatile int adaptiveLevel;
     private volatile LevelProbe probe;
     private volatile ClientLevel probeLevel;
+    private volatile String probeDescription = "no level bound yet";
     private volatile long lastHookErrorMs;
 
     public ClientServices(Settings settings, DeviceCapabilities device, ModCompatibility mods) {
@@ -296,11 +296,12 @@ public final class ClientServices implements FeatureEnvironment, AutoCloseable {
         return adaptive;
     }
 
-    @Override
     /**
-     * Reader the culling code uses, re-bound whenever the client level changes.
-     * Deliberately a lambda over one method: the ray caster stays unit testable and
-     * nothing but this class touches {@code ClientLevel}.
+     * Reader the culling code uses, re-bound whenever the client level changes. The
+     * block-opacity predicate itself is resolved by {@link LevelProbes} — by name, from
+     * a candidate list, once per level — because that method's name is exactly the kind
+     * of thing that changes between Minecraft versions and because "no occlusion" is a
+     * recoverable state while "wrong occlusion" is not.
      */
     public LevelProbe levelProbe() {
         Minecraft client = Minecraft.getInstance();
@@ -310,19 +311,20 @@ public final class ClientServices implements FeatureEnvironment, AutoCloseable {
             probe = null;
         }
         if (probe == null && level != null) {
-            final ClientLevel target = level;
-            probe = (x, y, z) -> {
-                try {
-                    BlockPos pos = BlockPos.containing(x, y, z);
-                    BlockState state = target.getBlockState(pos);
-                    return state.isSolidRender(target, pos);
-                } catch (RuntimeException e) {
-                    // An unreadable position is never solid: culling must fail open.
-                    return false;
-                }
-            };
+            LevelProbes.Probe probed = LevelProbes.forLevel(level);
+            probe = probed.probe();
+            probeDescription = probed.description();
+            if (!probed.available()) {
+                diagnostics.note("culling", probed.description());
+                HotState.entityOcclusion = false; // frustum only until a query resolves
+            }
         }
         return probe;
+    }
+
+    /** What the occlusion path resolved (also shown in the diagnostics report). */
+    public String probeDescription() {
+        return probeDescription;
     }
 
     /** Hook failures are reported at most once a minute; the game must keep running. */
