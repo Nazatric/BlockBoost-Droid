@@ -11,6 +11,7 @@ import dev.blockboost.BlockBoostRuntime;
 import dev.blockboost.client.adaptive.AdaptiveController;
 import dev.blockboost.client.culling.AsyncVisibilityEngine;
 import dev.blockboost.client.culling.LevelProbes;
+import dev.blockboost.culling.LevelProbe;
 import dev.blockboost.client.services.ChunkPipelineStats;
 import dev.blockboost.client.services.DiagnosticsService;
 import dev.blockboost.client.services.FrameSampler;
@@ -93,12 +94,21 @@ public final class ClientServices implements FeatureEnvironment, AutoCloseable {
             // The camera position is captured by the level renderer mixin, from the
             // exact Camera object the frame is being built with. Falling back to the
             // player only matters on the first frame after a level loads.
+            // Ray origin: the client player. The camera object is not reachable from
+            // here through anything we could verify against 26.1.2, and guessing a
+            // getter for it would either crash or be silently wrong. Using the player
+            // is conservative in the right direction, and the culling code refuses to
+            // hide anything while you are riding something (HotState.alwaysRender).
             Minecraft c = Minecraft.getInstance();
             double cx = HotState.camX, cy = HotState.camY, cz = HotState.camZ;
-            if (!HotState.cameraSeen && c.player != null) {
-                cx = c.player.getX();
-                cy = c.player.getY();
-                cz = c.player.getZ();
+            if (c.player != null) {
+                var eye = c.player.position();
+                cx = eye.x;
+                cy = eye.y + c.player.getEyeHeight();
+                cz = eye.z;
+                HotState.camX = cx;
+                HotState.camY = cy;
+                HotState.camZ = cz;
             }
             visibility.beginFrame(t, cx, cy, cz);
             visibility.updateField(levelProbe());
@@ -171,7 +181,7 @@ public final class ClientServices implements FeatureEnvironment, AutoCloseable {
     public void onFrameEnd() {
         long now = System.nanoTime();
         frames.sampleNow(now);
-        if ((t & 15L) == 0) {
+        if ((ticks.get() & 15L) == 0) {
             visibility.publishCounters();
         }
         if (gpuProbeDone.compareAndSet(false, true)) {
@@ -187,7 +197,7 @@ public final class ClientServices implements FeatureEnvironment, AutoCloseable {
         }
         AdaptiveController a = this.adaptive;
         if (a != null) {
-            a.onFrameEnd(ticks.get());
+            a.onFrameEnd();
         }
     }
 
@@ -207,7 +217,7 @@ public final class ClientServices implements FeatureEnvironment, AutoCloseable {
             visibility.onWorldChange(ticks.get());
             chunkStats.reset();
         } else {
-            visibility.clear();
+            visibility.invalidateAll();
             chunkStats.reset();
             if (settings.bool(ConfigSchema.MEM_RELEASE_ON_EXIT)) {
                 scratch.release();
@@ -315,7 +325,7 @@ public final class ClientServices implements FeatureEnvironment, AutoCloseable {
             probe = probed.probe();
             probeDescription = probed.description();
             if (!probed.available()) {
-                diagnostics.note("culling", probed.description());
+                diagnostics.note("occlusion: " + probed.description());
                 HotState.entityOcclusion = false; // frustum only until a query resolves
             }
         }

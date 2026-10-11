@@ -17,7 +17,8 @@ import dev.blockboost.core.FeatureRuntimeContext;
  * is correct on a phone: under MobileGlues/GL4ES, setting swap interval yourself is
  * a driver-dependent experiment (the extension may be absent, or it may apply to a
  * different context than the one drawing your frame), while {@code enableVsync} and
- * {@code maxFramerate} go through the window layer the game already owns.
+ * {@code maxFramerate}-equivalent ceiling, vsync and the idle reduction go through
+ * the option set the game already owns, never through the graphics API.
  *
  * <p>The idle throttle is the one with the biggest measured effect on a phone that
  * is not in a world at all — a menu at 300 fps is a phone at 100% GPU load for no
@@ -27,6 +28,8 @@ public final class FramePacingFeature implements Feature {
 
     private static volatile boolean idleApplied;
     private static volatile int lastCap = Integer.MIN_VALUE;
+    private static volatile int lastRenderDistance = -1;
+    private static volatile String lastParticles;
     private static volatile Boolean lastVsync;
 
     @Override
@@ -77,11 +80,18 @@ public final class FramePacingFeature implements Feature {
             return;
         }
         int cap = s.integer(ConfigSchema.RENDER_FRAME_CAP);
+        String vsync = s.enumValue(ConfigSchema.RENDER_VSYNC);
         if (cap != lastCap) {
-            VanillaOptions.maxFramerate(client, Math.max(0, cap));
+            // vsync is the only supported way to cap frames here, so the cap is only
+            // allowed to drive it while the user has left vsync on "ignore"; otherwise
+            // two settings would fight and the one you touched would lose.
+            if ("ignore".equals(vsync)) {
+                VanillaOptions.maxFramerate(client, Math.max(0, cap));
+            } else {
+                VanillaOptions.noteRequestedFrameCap(Math.max(0, cap));
+            }
             lastCap = cap;
         }
-        String vsync = s.enumValue(ConfigSchema.RENDER_VSYNC);
         if ("on".equals(vsync) && !Boolean.TRUE.equals(lastVsync)) {
             VanillaOptions.vsync(client, true);
             lastVsync = Boolean.TRUE;
@@ -117,10 +127,32 @@ public final class FramePacingFeature implements Feature {
         }
         idleApplied = hidden;
         if (hidden) {
-            lastCap = client.options == null ? lastCap : client.options.maxFramerate().get();
-            VanillaOptions.maxFramerate(client, Math.max(5, HotState.idleFrameCap));
+            lastCap = VanillaOptions.requestedFrameCap();
+            lastRenderDistance = client.options == null ? -1 : client.options.getEffectiveRenderDistance();
+            lastParticles = client.options == null || client.options.particles().get() == null
+                    ? null : client.options.particles().get().name();
+            // An unfocused window on a phone means the screen is off or another app is
+            // foreground: cut the work that costs power and heat, all of it reversible.
+            VanillaOptions.maxFramerate(client, Math.max(1, HotState.idleFrameCap));
+            if (lastRenderDistance > 4) {
+                VanillaOptions.renderDistance(client, Math.max(2, lastRenderDistance - 2));
+                VanillaOptions.simulationDistance(client, Math.max(2, lastRenderDistance - 3));
+            }
+            VanillaOptions.particles(client, net.minecraft.server.level.ParticleStatus.MINIMAL);
         } else if (lastCap != Integer.MIN_VALUE) {
             VanillaOptions.maxFramerate(client, lastCap);
+            if (lastRenderDistance > 0) {
+                VanillaOptions.renderDistance(client, lastRenderDistance);
+                VanillaOptions.simulationDistance(client, Math.max(2, lastRenderDistance - 1));
+            }
+            if (lastParticles != null) {
+                try {
+                    VanillaOptions.particles(client,
+                            net.minecraft.server.level.ParticleStatus.valueOf(lastParticles));
+                } catch (IllegalArgumentException ignored) {
+                    // A tier name from another version: leaving it as-is is correct.
+                }
+            }
         }
     }
 

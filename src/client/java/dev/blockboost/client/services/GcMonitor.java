@@ -69,7 +69,7 @@ public final class GcMonitor implements AutoCloseable {
                     }
                     lastPauseMs = duration;
                     if (duration >= thresholdMs) {
-                        recent.add(0, new Pause(safe(gc.getGcName()), shortAction(info.getGcAction()), duration,
+                        recent.add(0, new Pause(safe(info.getGcName()), shortAction(info.getGcAction()), duration,
                                 System.currentTimeMillis(), shortCause(info.getGcCause())));
                         while (recent.size() > RECENT_CAP) {
                             recent.remove(recent.size() - 1);
@@ -80,8 +80,14 @@ public final class GcMonitor implements AutoCloseable {
                 }
             };
             for (GarbageCollectorMXBean bean : beans) {
-                if (bean instanceof com.sun.management.GarbageCollectorMXBean ext) {
-                    ext.addNotificationListener(listener, null, null);
+                // The JDK exposes GC notifications through the platform MXBean's
+                // emitter side, not through com.sun.management; that is also the only
+                // form that is stable across collector implementations.
+                if (bean instanceof javax.management.NotificationEmitter emitter) {
+                    emitter.addNotificationListener(listener,
+                            n -> com.sun.management.GarbageCollectionNotificationInfo.GARBAGE_COLLECTION_NOTIFICATION
+                                    .equals(n.getType()),
+                            null);
                     notificationSupported = true;
                 }
             }
@@ -210,9 +216,9 @@ public final class GcMonitor implements AutoCloseable {
             return;
         }
         for (GarbageCollectorMXBean bean : beans) {
-            if (bean instanceof com.sun.management.GarbageCollectorMXBean ext && listener != null) {
+            if (bean instanceof javax.management.NotificationEmitter emitter && listener != null) {
                 try {
-                    ext.removeNotificationListener(listener);
+                    emitter.removeNotificationListener(listener);
                 } catch (Exception ignored) {
                     // Shutdown noise only.
                 }

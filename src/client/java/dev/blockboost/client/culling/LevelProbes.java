@@ -9,6 +9,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.state.BlockState;
 
 import dev.blockboost.BlockBoost;
+import dev.blockboost.culling.LevelProbe;
 
 /**
  * Builds the one world query the culling code needs: "is this position a full opaque

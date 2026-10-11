@@ -45,6 +45,28 @@ public final class InfoScreen extends Screen {
                 .bounds(margin * 2 + buttonWidth, y, buttonWidth, 20).build());
         this.addRenderableWidget(Button.builder(Component.literal("< back"), b -> answer(false))
                 .bounds(this.width - margin - 70, y, 70, 20).build());
+
+        // The body is drawn as disabled widget rows rather than by overriding the
+        // screen's render method, because Screen's drawing entry point is exactly the
+        // kind of thing that renames between versions - and a settings dialog that
+        // fails to compile against a rename is a broken mod, not a cosmetic problem.
+        int rowY = 24;
+        for (String line : wrap(this.font, body.getString(), this.width - margin * 2)) {
+            if (rowY > y - 26) {
+                addRow("... (continued in the config file)", margin, rowY, this.width - margin * 2);
+                break;
+            }
+            addRow(line, margin, rowY, this.width - margin * 2);
+            rowY += Math.max(10, this.font.lineHeight);
+        }
+    }
+
+    /** One flat, inert line of text: a disabled button is vanilla's cheapest label. */
+    private void addRow(String text, int x, int y, int width) {
+        Button row = Button.builder(Component.literal(text), b -> { })
+                .bounds(x, y, width, 12).build();
+        row.active = false;
+        this.addRenderableWidget(row);
     }
 
     private void answer(boolean confirmed) {

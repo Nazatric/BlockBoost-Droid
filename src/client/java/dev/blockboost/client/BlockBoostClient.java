@@ -21,8 +21,10 @@ import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 
 import dev.blockboost.BlockBoost;
 import dev.blockboost.BlockBoostRuntime;
+import dev.blockboost.core.FeatureId;
 import dev.blockboost.client.adaptive.AdaptiveController;
 import dev.blockboost.client.features.BlockEntityCullingFeature;
+import dev.blockboost.client.features.VanillaOptions;
 import dev.blockboost.client.features.ChunkPipelineFeature;
 import dev.blockboost.client.features.DiagnosticsFeature;
 import dev.blockboost.client.features.EntityCullingFeature;

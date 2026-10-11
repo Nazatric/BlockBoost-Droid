@@ -60,7 +60,7 @@ public final class EntityCullingFeature implements Feature {
     public void onDeactivate(FeatureRuntimeContext ctx) {
         ClientServices services = Services.of(ctx);
         if (services != null) {
-            services.visibility().clear();
+            services.visibility().invalidateAll();
         }
         HotState.refresh();
     }

@@ -109,6 +109,30 @@ public final class BlockBoostSettingsScreen extends Screen {
         statusButton = Button.builder(Component.literal(""), b -> refresh())
                 .bounds(margin + width - 88, margin, 88, 20).build();
 
+        // A real filter field. EditBox's 4-argument constructor is the shape that has
+        // existed longest and is unambiguous about what means what; position comes from
+        // setX/setY afterwards rather than from guessing the argument order.
+        search = new net.minecraft.client.gui.components.EditBox(this.font,
+                Math.max(60, width - 2 * margin - 64), 18,
+                Component.translatable("blockboost.screen.search"));
+        search.setX(margin + 32);
+        search.setY(margin + 22);
+        search.setMaxLength(48);
+        search.setHint(Component.literal("filter settings"));
+        search.setResponder(value -> {
+            filter = value == null ? "" : value.toLowerCase(java.util.Locale.ROOT);
+            page = 0;
+            refresh();
+        });
+        this.addRenderableWidget(search);
+        clearSearch = Button.builder(Component.literal("x"), b -> {
+            search.setValue("");
+            filter = "";
+            page = 0;
+            refresh();
+        }).bounds(margin + width - 30, margin + 22, 24, 18).build();
+        this.addRenderableWidget(clearSearch);
+
         for (int i = 0; i < MAX_ROWS; i++) {
             final int index = i;
             rowMain[i] = Button.builder(Component.literal(""), b -> cycle(index, 1))
@@ -160,13 +184,16 @@ public final class BlockBoostSettingsScreen extends Screen {
         this.addRenderableWidget(adaptiveButton);
         this.addRenderableWidget(resetButton);
         this.addRenderableWidget(doneButton);
-        this.rowYStart = 20 + margin + 6;
+        this.rowYStart = 20 + margin + 6 + 22;
         this.rowHeight = ROW_HEIGHT;
         this.rowAreaWidth = width;
         refresh();
     }
 
     private Button sectionNameButton;
+    private Button clearSearch;
+    private net.minecraft.client.gui.components.EditBox search;
+    private String filter = "";
     private int rowYStart;
     private int rowHeight;
     private int rowAreaWidth;
@@ -175,6 +202,18 @@ public final class BlockBoostSettingsScreen extends Screen {
     private void refresh() {
         Settings settings = runtime.settings();
         visible = keysFor(CATEGORIES[categoryIndex]);
+        if (!filter.isEmpty()) {
+            java.util.List<dev.blockboost.config.SettingKey> matching = new java.util.ArrayList<>();
+            for (dev.blockboost.config.SettingKey key : visible) {
+                String doc = key.docSuffix() == null ? "" : key.docSuffix();
+                if (key.path().toLowerCase(Locale.ROOT).contains(filter)
+                        || displayLabel(key).toLowerCase(Locale.ROOT).contains(filter)
+                        || doc.toLowerCase(Locale.ROOT).contains(filter)) {
+                    matching.add(key);
+                }
+            }
+            visible = matching;
+        }
         int rows = Math.max(3, Math.min(MAX_ROWS, (this.height - rowYStart - 100) / rowHeight));
         int pages = pages();
         if (page >= pages) {

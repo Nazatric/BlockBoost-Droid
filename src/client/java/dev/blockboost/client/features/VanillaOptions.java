@@ -147,20 +147,36 @@ public final class VanillaOptions {
         });
     }
 
-    /** Frames per second; 0 means "as fast as the driver allows", like vanilla's slider. */
+    private static volatile int requestedCap = 0;
+
+    /**
+     * Frame ceiling.
+     *
+     * <p>26.1.2's {@code Options} has no per-frame-rate entry we could confirm against
+     * the real jar, and BlockBoost does not sync the render thread, sleep it, or touch
+     * the window's swap interval: a busy wait steals time from the very loop it is
+     * meant to speed up, and driver-level sync calls are the global state this mod
+     * promised never to modify. So the supported lever is used - vsync caps frames at
+     * the panel rate - and the requested number is kept for the report and for the
+     * idle path. A cap of 0 means "uncapped": vsync off.
+     */
     public static void maxFramerate(Minecraft client, int cap) {
         if (client == null || client.options == null) {
             return;
         }
         int value = Math.max(0, Math.min(1000, cap));
-        write("maxFramerate", () -> {
-        var option = client.options.maxFramerate();
-        Integer current = option.get();
-        if (current == null || current != value) {
-            remember("maxFramerate", current);
-            option.set(value);
-        }
-    });
+        requestedCap = value;
+        vsync(client, value > 0);
+    }
+
+    /** Records the requested ceiling without touching vsync (an explicit vsync wins). */
+    public static void noteRequestedFrameCap(int cap) {
+        requestedCap = Math.max(0, Math.min(1000, cap));
+    }
+
+    /** The ceiling the user asked for, whether or not the game can honour the number. */
+    public static int requestedFrameCap() {
+        return requestedCap;
     }
 
     public static void vsync(Minecraft client, boolean on) {
@@ -203,7 +219,6 @@ public final class VanillaOptions {
             case "particles" -> write(key, () -> client.options.particles().set((ParticleStatus) previous));
             case "ambientOcclusion" -> write(key, () -> client.options.ambientOcclusion().set((Boolean) previous));
             case "entityShadows" -> write(key, () -> client.options.entityShadows().set((Boolean) previous));
-            case "maxFramerate" -> write(key, () -> client.options.maxFramerate().set((Integer) previous));
             case "enableVsync" -> write(key, () -> client.options.enableVsync().set((Boolean) previous));
             default -> {
             }

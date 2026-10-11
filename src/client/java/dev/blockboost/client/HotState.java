@@ -7,10 +7,7 @@ import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
 import net.minecraft.world.entity.boss.wither.WitherBoss;
 import net.minecraft.world.entity.decoration.ItemFrame;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.vehicle.AbstractMinecart;
-import net.minecraft.world.level.block.entity.BeaconBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.entity.ConduitBlockEntity;
 import net.minecraft.world.phys.AABB;
 
 import dev.blockboost.BlockBoost;
@@ -202,10 +199,15 @@ public final class HotState {
         if (protectItemFrames && entity instanceof ItemFrame) {
             return true;
         }
-        if (entity instanceof AbstractMinecart || entity instanceof Display) {
-            // Moving rides and display entities are read as information (minecart
-            // rails, item frames on a wall, a server's scoreboard display), and
-            // their motion is exactly when a stale verdict looks worst.
+        if (entity instanceof Display) {
+            // Display entities are how servers and adventure maps convey information,
+            // and they are cheap: never worth the risk of hiding one.
+            return true;
+        }
+        if (entity.getRootVehicle() != null || !entity.getPassengers().isEmpty()) {
+            // Anything in a riding relationship is left alone as a unit: a verdict for
+            // the mount and a verdict for the rider that disagree frame by frame look
+            // far worse than never culling either.
             return true;
         }
         // A named entity is somebody's marker: nametags, armor stands with a
@@ -238,10 +240,15 @@ public final class HotState {
         return false;
     }
 
-    /** Beams and light sources are visible far beyond their block: never cull them. */
+    /**
+     * Blocks whose visual is drawn beyond their own chunk - beacon beams, conduit water,
+     * some modded contraptions - are what a naive per-position test would wrongly hide.
+     * Vanilla already records that decision on the renderer itself, as {@code
+     * BlockEntityRenderer#shouldRenderOffScreen()}, and the mixin consults it, so this
+     * stays empty on purpose rather than being a table of block names that rots.
+     */
     public static boolean alwaysRenderBlockEntity(BlockEntity blockEntity) {
-        return blockEntity instanceof BeaconBlockEntity || blockEntity instanceof ConduitBlockEntity
-                || !blockEntity.getBlockState().isValidModel();
+        return false;
     }
 
     /** A reload or a dimension change invalidates every cached verdict. */

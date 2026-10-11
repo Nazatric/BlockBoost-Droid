@@ -20,5 +20,6 @@
   "blockboost.screen.reset_section.confirm": "Reset the %s section (%s settings) to their defaults? Your other sections are untouched.",
   "blockboost.hud.hidden": "Performance overlay off",
   "blockboost.hud.basic": "Performance overlay: basic",
-  "blockboost.hud.advanced": "Performance overlay: detailed"
+  "blockboost.hud.advanced": "Performance overlay: detailed",
+  "blockboost.screen.search": "Filter settings"
 }
