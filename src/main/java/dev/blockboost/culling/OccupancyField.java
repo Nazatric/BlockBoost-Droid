@@ -1,4 +1,4 @@
-package dev.blockboost.client.culling;
+package dev.blockboost.culling;
 
 /**
  * A coarse occupancy grid around the camera: built in slices on the client thread,

@@ -1,4 +1,4 @@
-package dev.blockboost.client.culling;
+package dev.blockboost.culling;
 
 /**
  * The only world access shape the visibility code knows about.

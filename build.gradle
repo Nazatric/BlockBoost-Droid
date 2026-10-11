@@ -48,6 +48,9 @@ dependencies {
 
     // Fabric Loader JUnit gives unit tests a bootstrapped game classpath.
     testImplementation "net.fabricmc:fabric-loader-junit:${project.loader_version}"
+    testImplementation platform("org.junit.jupiter:junit-jupiter:5.11.4")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }
 
 base {

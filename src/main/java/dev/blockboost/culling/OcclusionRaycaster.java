@@ -1,4 +1,4 @@
-package dev.blockboost.client.culling;
+package dev.blockboost.culling;
 
 /**
  * Ray sampling for "can the camera possibly see this box".

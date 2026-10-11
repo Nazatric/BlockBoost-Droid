@@ -15,7 +15,7 @@ import net.minecraft.world.phys.AABB;
 
 import dev.blockboost.BlockBoost;
 import dev.blockboost.client.culling.AsyncVisibilityEngine;
-import dev.blockboost.client.culling.LevelProbe;
+import dev.blockboost.culling.LevelProbe;
 import dev.blockboost.client.services.ChunkPipelineStats;
 import dev.blockboost.client.services.FrameSampler;
 import dev.blockboost.config.ConfigSchema;

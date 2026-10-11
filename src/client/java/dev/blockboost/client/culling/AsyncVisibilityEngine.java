@@ -3,6 +3,9 @@ package dev.blockboost.client.culling;
 import java.util.concurrent.atomic.AtomicLong;
 
 import dev.blockboost.client.services.DiagnosticsService;
+import dev.blockboost.culling.LevelProbe;
+import dev.blockboost.culling.OcclusionRaycaster;
+import dev.blockboost.culling.OccupancyField;
 import dev.blockboost.config.ConfigSchema;
 import dev.blockboost.config.Settings;
 import dev.blockboost.device.DeviceCapabilities;
