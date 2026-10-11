@@ -85,7 +85,7 @@ public final class FramePacingFeature implements Feature {
             // vsync is the only supported way to cap frames here, so the cap is only
             // allowed to drive it while the user has left vsync on "ignore"; otherwise
             // two settings would fight and the one you touched would lose.
-            if ("ignore".equals(vsync)) {
+            if ("auto".equals(vsync)) {
                 VanillaOptions.maxFramerate(client, Math.max(0, cap));
             } else {
                 VanillaOptions.noteRequestedFrameCap(Math.max(0, cap));

@@ -117,10 +117,22 @@ public final class ConfigStore {
             settings.values.put(key.path(), clean);
         }
 
-        // Preserve anything we do not know about (forward compatibility).
+        // Preserve anything we do not know about (forward compatibility). Unknown keys
+        // inside "settings" stay inside it; unknown top-level sections (which is what a
+        // newer version of this mod would add) are kept as top-level sections, so a
+        // downgrade-then-upgrade round trip does not relocate anyone's data.
         for (Map.Entry<String, JsonElement> e : body.entrySet()) {
             if (ConfigSchema.byPath(e.getKey()) == null) {
                 settings.putUnknown(e.getKey(), toJava(e.getValue()));
+            }
+        }
+        if (body != root) {
+            for (Map.Entry<String, JsonElement> e : root.entrySet()) {
+                switch (e.getKey()) {
+                    case "version", "preset", "generator", "settings" -> {
+                    }
+                    default -> settings.putUnknownRoot(e.getKey(), toJava(e.getValue()));
+                }
             }
         }
 
@@ -181,6 +193,11 @@ public final class ConfigStore {
                 body.add(e.getKey(), toJson(e.getValue()));
             }
         }
+        for (Map.Entry<String, Object> e : settings.unknownRoot().entrySet()) {
+            if (!root.has(e.getKey())) {
+                root.add(e.getKey(), toJson(e.getValue()));
+            }
+        }
         root.add("settings", body);
 
         Path dir = file.toAbsolutePath().getParent();
@@ -228,7 +245,10 @@ public final class ConfigStore {
             return null;
         }
         if (!el.isJsonPrimitive()) {
-            return el.toString();
+            // Objects and arrays are carried through as elements rather than as their
+            // printed form: a preserved block must come back structurally identical,
+            // not as a string that happens to look like JSON.
+            return el.isJsonNull() ? null : el.deepCopy();
         }
         JsonPrimitive p = el.getAsJsonPrimitive();
         if (p.isBoolean()) {
@@ -245,6 +265,9 @@ public final class ConfigStore {
     }
 
     private static JsonElement toJson(Object v) {
+        if (v instanceof JsonElement je) {
+            return je;
+        }
         if (v instanceof Boolean b) {
             return new JsonPrimitive(b);
         }

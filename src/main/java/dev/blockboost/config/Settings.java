@@ -29,6 +29,12 @@ public final class Settings {
     /** Package private so {@link ConfigStore} can bulk-fill without a setter storm. */
     final Map<String, Object> values = new ConcurrentHashMap<>();
     private final Map<String, Object> unknownKeys = Collections.synchronizedMap(new TreeMap<>());
+    /**
+     * Unknown members found at the top level of the file, next to {@code settings} -
+     * a future version's own sections. Kept separately so they are written back where
+     * they were read from instead of being shuffled into our namespace.
+     */
+    private final Map<String, Object> unknownRoot = Collections.synchronizedMap(new TreeMap<>());
     private final CopyOnWriteArrayList<Runnable> listeners = new CopyOnWriteArrayList<>();
     private volatile String presetName = "custom";
 
@@ -156,6 +162,16 @@ public final class Settings {
 
     void putUnknown(String path, Object value) {
         unknownKeys.put(path, value);
+    }
+
+    public void putUnknownRoot(String key, Object value) {
+        unknownRoot.put(key, value);
+    }
+
+    public Map<String, Object> unknownRoot() {
+        synchronized (unknownRoot) {
+            return new LinkedHashMap<>(unknownRoot);
+        }
     }
 
     public Map<String, Object> unknownKeys() {

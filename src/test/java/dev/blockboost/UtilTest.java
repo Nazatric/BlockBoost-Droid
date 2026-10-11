@@ -130,7 +130,9 @@ public class UtilTest {
     @Test
     void raycasterOnlyHidesWhenEveryRayIsBlocked() {
         int wallX = 5;
-        LevelProbe wall = (x, y, z) -> x >= wallX - 1 && x <= wallX + 1;
+        // A wall with a top: opaque only in its own band of height, so "a gap above it"
+        // is a case the test can actually express.
+        LevelProbe wall = (x, y, z) -> x >= wallX - 1 && x <= wallX + 1 && y >= 60 && y <= 70;
         double camX = 0, camY = 65, camZ = 0;
 
         // Fully behind a thick wall, both corners and the centre blocked.
@@ -158,7 +160,9 @@ public class UtilTest {
         long start = System.nanoTime();
         boolean hidden = OcclusionRaycaster.boxHidden(solid, 0, 0, 0, 1e9, 1e9, 1e9, 1e9 + 1, 1e9 + 1, 1e9 + 1, 0);
         long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
-        assertFalse(hidden || !hidden, "value is irrelevant; the point is that it returned");
+        // The value itself is meaningless here (any answer is a legal answer to absurd
+        // geometry); reaching this line at all is the assertion.
+        assertTrue(elapsedMs >= 0, "returned: hidden=" + hidden);
         assertTrue(elapsedMs < 500, "a ray test must be bounded by a step cap, took " + elapsedMs + " ms");
     }
 }

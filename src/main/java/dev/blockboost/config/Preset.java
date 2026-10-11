@@ -223,11 +223,23 @@ public record Preset(String id, String nameKey, String tooltipKey, Map<SettingKe
         patcher.accept(patch);
         // Sanity: every patched key must be sanitegable to the patched value.
         for (Map.Entry<SettingKey, Object> e : patch.entrySet()) {
-            Object clean = e.getKey().sanitize(e.getValue());
-            if (e.getKey().kind() == SettingKey.Kind.ENUM ? !clean.equals(e.getValue())
-                    : !(clean instanceof Number a) || !(e.getValue() instanceof Number b) || Math.abs(a.doubleValue() - b.doubleValue()) > 1e-9) {
-                throw new IllegalStateException("preset " + id + " patches " + e.getKey().path()
-                        + " with an out-of-range value " + e.getValue() + " (allowed " + clean + ")");
+            SettingKey key = e.getKey();
+            Object value = e.getValue();
+            Object clean = key.sanitize(value);
+            boolean unchanged = switch (key.kind()) {
+                // A preset may only write a value the schema accepts as-is. If sanitize
+                // had to move it, the preset is claiming something the key forbids -
+                // e.g. a tri-state string on a boolean, or a render distance of 999.
+                case BOOLEAN -> clean instanceof Boolean b && b.equals(value);
+                case ENUM -> clean instanceof String s && s.equals(value);
+                case INTEGER -> clean instanceof Number a && value instanceof Number b
+                        && a.intValue() == b.intValue();
+                case DOUBLE -> clean instanceof Number a && value instanceof Number b
+                        && Math.abs(a.doubleValue() - b.doubleValue()) < 1e-9;
+            };
+            if (!unchanged) {
+                throw new IllegalStateException("preset " + id + " patches " + key.path()
+                        + " with an out-of-range value " + value + " (allowed " + clean + ")");
             }
         }
         return new Preset(id, "blockboost.preset." + id + ".name",
