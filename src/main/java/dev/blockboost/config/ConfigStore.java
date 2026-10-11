@@ -94,7 +94,7 @@ public final class ConfigStore {
 
         boolean migrated = false;
         if (fromVersion != BlockBoost.CONFIG_VERSION) {
-            MigrationStep.Result r = ConfigMigrations.run(body, fromVersion, BlockBoost.CONFIG_VERSION);
+            ConfigMigrations.Result r = ConfigMigrations.run(body, fromVersion, BlockBoost.CONFIG_VERSION);
             body = r.json();
             notes.addAll(r.notes());
             migrated = r.appliedAny();

@@ -29,7 +29,7 @@ public final class Settings {
     /** Package private so {@link ConfigStore} can bulk-fill without a setter storm. */
     final Map<String, Object> values = new ConcurrentHashMap<>();
     private final Map<String, Object> unknownKeys = Collections.synchronizedMap(new TreeMap<>());
-    private final List<Runnable> listeners = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<Runnable> listeners = new CopyOnWriteArrayList<>();
     private volatile String presetName = "custom";
 
     public static Settings defaults() {

@@ -58,18 +58,94 @@ def extract_errors(log: str) -> str:
 
 
 def java_compile_errors(log: str) -> str:
-    """Gradle prints javac diagnostics as '/abs/path/File.java:12: error: message'."""
-    pat = re.compile(r"^(/[^\s:]+\.java):\d+:(?:\d+:)? (?:error|warning): .*$", re.MULTILINE)
-    hits = []
+    """javac diagnostics, with the two lines after each error.
+
+    Gradle prints them as '/abs/path/File.java:12: error: message' and then the
+    offending source line plus a 'symbol:'/'location:' pair. Those two lines are the
+    whole point: without them "cannot find symbol" is useless to anyone who cannot
+    read the build machine's filesystem.
+    """
+    lines = log.splitlines()
+    pat = re.compile(r"^(/[^\s:]+\.java):(\d+):(?:\d+:)? (?:error|warning): (.*)$")
+    out = []
     seen = set()
-    for m in pat.finditer(log):
-        line = m.group(0)
-        # Strip the build-machine prefix to keep it readable and dedupe repeats.
-        line = re.sub(r"^/home/runner/work/blockboost/blockboost/", "", line)
-        if line not in seen:
-            seen.add(line)
-            hits.append(line)
-    return "\n".join(hits[:200])
+    for i, raw in enumerate(lines):
+        m = pat.match(raw)
+        if not m:
+            continue
+        path = m.group(1).split("/")[-1]
+        key = (path, m.group(2), m.group(3))
+        if key in seen:
+            continue
+        seen.add(key)
+        block = [f"{path}:{m.group(2)}: {m.group(3)}"]
+        for extra in lines[i + 1:i + 4]:
+            t = extra.strip()
+            if t.startswith("symbol:") or t.startswith("location:") or t.startswith("required:"):
+                block.append("    " + t)
+            elif t.startswith("found:") or t.startswith("reason:"):
+                block.append("    " + t)
+        out.append("\n".join(block))
+    return "\n".join(out[:150])
+
+
+def requested_api(dump: str, ask_path: str) -> str:
+    """Answer the questions in tools/recon-ask.txt from the javap dump.
+
+    Format of each ask line: 'ClassRegex##MemberRegex'. Anything starting with '#'
+    is a comment. This exists because the full dump is far too big for a comment,
+    while 'what is the exact signature of Minecraft.renderFrame in 26.1.2' is the
+    only question that cannot be answered from a changelog.
+    """
+    asks = []
+    try:
+        with open(ask_path, "r", errors="replace") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                cls, _, member = line.partition("##")
+                asks.append((cls.strip(), member.strip() or ".*"))
+    except OSError:
+        return "(no tools/recon-ask.txt in the checkout)"
+
+    sections = {}
+    current = None
+    for line in dump.splitlines():
+        if line.startswith("====="):
+            current = line.strip("= ").strip()
+            sections.setdefault(current, [])
+            continue
+        if current is not None:
+            sections[current].append(line)
+
+    out = []
+    budget = 11000
+    used = 0
+    for cls, member in asks:
+        try:
+            cls_re = re.compile(cls)
+            mem_re = re.compile(member)
+        except re.error as e:
+            out.append(f"!! bad ask {cls}: {e}")
+            continue
+        hits = []
+        for header, body in sections.items():
+            if not cls_re.search(header):
+                continue
+            for line in body:
+                if mem_re.search(line):
+                    hits.append(line.strip()[:200])
+        if not hits:
+            out.append(f"### {cls} / {member}\n  (no member matched - check the class regex)")
+            continue
+        block = "\n".join([f"### {cls} / {member}"] + hits[:60])
+        if used + len(block) > budget:
+            out.append("... (budget reached; refine tools/recon-ask.txt) ...")
+            break
+        out.append(block)
+        used += len(block)
+    return "\n".join(out) or "(nothing asked)"
 
 
 def post(title: str, body: str) -> None:
@@ -118,7 +194,7 @@ def main() -> int:
     custom = read(os.environ.get("REPORT_FILE", "/tmp/__none__"))
     jar_verify = read("/tmp/jar-verify.txt")
     discovery = read("/tmp/discovery.txt")
-    api_dump = read("build/recon/api.txt", limit=120000)
+    api_dump = read("build/recon/api.txt", limit=2_000_000)
 
     status = "UNKNOWN"
     if "BUILD SUCCESSFUL" in gradle_log:
@@ -164,6 +240,15 @@ def main() -> int:
         lines.append("<details><summary>dependency discovery</summary>")
         lines.append("```text")
         lines.append(discovery[:6000])
+        lines.append("```")
+        lines.append("</details>")
+
+    asked = requested_api(api_dump, "tools/recon-ask.txt")
+    if asked:
+        lines.append("")
+        lines.append("<details open><summary>Requested API (verified against the real 26.1.2 jar)</summary>")
+        lines.append("```text")
+        lines.append(asked[:13000])
         lines.append("```")
         lines.append("</details>")
 

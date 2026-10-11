@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBooleanArray;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +39,7 @@ public final class FeatureRegistry {
     private final Map<FeatureId, Feature> features = new EnumMap<>(FeatureId.class);
     private final Map<FeatureId, FeatureStatus> status = new EnumMap<>(FeatureId.class);
     private final Map<FeatureId, String> reasons = new EnumMap<>(FeatureId.class);
-    private final AtomicBooleanArray active = new AtomicBooleanArray(FeatureId.values().length);
+    private final AtomicIntegerArray active = new AtomicIntegerArray(FeatureId.values().length);
     private final Map<FeatureId, Integer> failures = new EnumMap<>(FeatureId.class);
     /** Features the user switched off after a runtime error, until restart. */
     private final java.util.Set<FeatureId> quarantined = java.util.concurrent.ConcurrentHashMap.newKeySet();
@@ -126,16 +126,16 @@ public final class FeatureRegistry {
             }
         }
 
-        boolean wasActive = active.get(id.ordinal());
+        boolean wasActive = active.get(id.ordinal()) != 0;
         if (wantActive && !wasActive) {
             try {
                 f.onActivate(ctx);
-                active.set(id.ordinal(), true);
+                active.set(id.ordinal(), 1);
                 status.put(id, next == FeatureStatus.ACTIVE ? FeatureStatus.ACTIVE : next);
                 reasons.put(id, reason);
                 LOG.info("[BlockBoost] enabled {} ({})", id.label(), id);
             } catch (Throwable t) {
-                active.set(id.ordinal(), false);
+                active.set(id.ordinal(), 0);
                 if (cfg.bool(ConfigSchema.COMPAT_ISOLATE_FAILURES)) {
                     quarantined.add(id);
                     next = FeatureStatus.DISABLED_AT_RUNTIME;
@@ -152,7 +152,7 @@ public final class FeatureRegistry {
                 }
             }
         } else if (!wantActive && wasActive) {
-            active.set(id.ordinal(), false);
+            active.set(id.ordinal(), 0);
             try {
                 f.onDeactivate(ctx);
             } catch (Throwable t) {
@@ -187,7 +187,7 @@ public final class FeatureRegistry {
     }
 
     public boolean isActive(FeatureId id) {
-        return active.get(id.ordinal());
+        return active.get(id.ordinal()) != 0;
     }
 
     public FeatureStatus status(FeatureId id) {
@@ -239,7 +239,7 @@ public final class FeatureRegistry {
 
     public void quarantine(FeatureId id, String why) {
         quarantined.add(id);
-        active.set(id.ordinal(), false);
+        active.set(id.ordinal(), 0);
         status.put(id, FeatureStatus.DISABLED_AT_RUNTIME);
         reasons.put(id, why);
         LOG.warn("[BlockBoost] {} switched off at runtime: {}", id, why);

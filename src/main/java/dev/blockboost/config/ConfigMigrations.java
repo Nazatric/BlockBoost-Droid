@@ -43,8 +43,10 @@ public final class ConfigMigrations {
                             s.addProperty(ConfigSchema.RENDER_VSYNC.path(), vsync ? "on" : "off");
                         }
                         rename(s, "toggles.maxFps", ConfigSchema.RENDER_FRAME_CAP.path());
-                        rename(s, "toggles.adaptive", ConfigSchema.ADAPTIVE_MODE.path(),
-                                v -> v instanceof Boolean b && b ? "active" : "off");
+                        rename(s, "toggles.adaptive", ConfigSchema.ADAPTIVE_MODE.path(), v -> {
+                            boolean on = v.isJsonPrimitive() && v.getAsBoolean();
+                            return new com.google.gson.JsonPrimitive(on ? "active" : "off");
+                        });
                     })
     );
 
