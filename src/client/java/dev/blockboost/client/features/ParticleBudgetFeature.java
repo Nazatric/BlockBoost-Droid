@@ -1,7 +1,7 @@
 package dev.blockboost.client.features;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.ParticleStatus;
+import net.minecraft.server.level.ParticleStatus;
 
 import dev.blockboost.client.HotState;
 import dev.blockboost.config.ConfigSchema;

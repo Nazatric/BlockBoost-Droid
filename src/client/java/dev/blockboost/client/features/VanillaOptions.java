@@ -4,7 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.ParticleStatus;
+import net.minecraft.server.level.ParticleStatus;
 
 import dev.blockboost.BlockBoost;
 
@@ -73,7 +73,7 @@ public final class VanillaOptions {
                 remember("mipmapLevels", current);
                 option.set(value);
             }
-            client.updateMaxMipLevel(value);
+            reloadRenderer(client);
         });
     }
 
@@ -195,7 +195,7 @@ public final class VanillaOptions {
             case "simulationDistance" -> write(key, () -> client.options.simulationDistance().set((Integer) previous));
             case "mipmapLevels" -> write(key, () -> {
                 client.options.mipmapLevels().set((Integer) previous);
-                client.updateMaxMipLevel((Integer) previous);
+                reloadRenderer(client);
             });
             case "biomeBlendRadius" -> write(key, () -> client.options.biomeBlendRadius().set((Integer) previous));
             case "entityDistanceScaling" ->
@@ -229,6 +229,26 @@ public final class VanillaOptions {
         StringBuilder sb = new StringBuilder("overridden:");
         PREVIOUS.forEach((k, v) -> sb.append(' ').append(k).append("=<was ").append(v).append('>'));
         return sb.toString();
+    }
+
+    /**
+     * Options that the renderer baked into its buffers (mipmaps, ambient occlusion)
+     * need a renderer reload. {@code allChanged()} is vanilla's own entry point for
+     * that — the same call its options screen makes — so we ask for it instead of
+     * touching GL state ourselves.
+     */
+    private static void reloadRenderer(Minecraft client) {
+        try {
+            if (client.levelRenderer != null) {
+                client.levelRenderer.allChanged();
+            }
+        } catch (RuntimeException | LinkageError e) {
+            BlockBoost.LOG.debug("[BlockBoost] renderer reload request skipped: {}", e.toString());
+        }
+    }
+
+    static void requestRendererReload(Minecraft client) {
+        reloadRenderer(client);
     }
 
     private static void write(String key, Runnable action) {

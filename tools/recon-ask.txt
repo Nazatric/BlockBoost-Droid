@@ -2,39 +2,24 @@
 # One per line:  ClassRegex##MemberRegex   (lines starting with # are ignored)
 # The CI reporter answers these and posts the result to the build issue, which is
 # how this repository verifies mixin targets without a local JDK or Maven access.
-net\.minecraft\.client\.Minecraft##.*renderFrame|public void stop|setScreen|getWindow|getMainCamera|isPaused|updateMaxMipLevel|reloadResourcePacks|levelRenderer|public .* font|getTextureManager|getEntityRenderDispatcher|getBlockEntityRenderDispatcher|isLoaded|getInstance
-net\.minecraft\.client\.Options##.*mipmapLevels|maxFramerate|enableVsync|particles|ambientOcclusion|entityShadows|renderDistance|simulationDistance|biomeBlendRadius|entityDistanceScaling|void save|graphicsMode|getEffectiveRenderDistance|exclusiveFullscreen
-net\.minecraft\.client\.OptionInstance##public|set|get
-net\.minecraft\.client\.gui\.components\.Button##builder|bounds
-net\.minecraft\.client\.gui\.components\.AbstractWidget##public
-net\.minecraft\.client\.gui\.components\.Slider##public
-net\.minecraft\.client\.gui\.components\.CycleButton##public|builder
-net\.minecraft\.client\.gui\.components\.EditBox##public
-net\.minecraft\.client\.gui\.components\.Tooltip##create
-net\.minecraft\.client\.gui\.GuiGraphicsExtractor##text|fill|scissor|outline|drawString
-net\.minecraft\.client\.gui\.Font##width|lineHeight
-net\.minecraft\.client\.gui\.screens\.Screen##addRenderableWidget|clearWidgets|void init|onClose|shouldPause|keyPressed
-net\.minecraft\.client\.gui\.screens\.ConfirmScreen##ConfirmScreen
-net\.minecraft\.client\.gui\.screens\.options\.OptionsScreen##void init|OptionsScreen
-net\.minecraft\.client\.renderer\.LevelRenderer##extractEntity|extractVisibleEntities|allChanged|needsUpdate
-net\.minecraft\.client\.renderer\.blockentity\.BlockEntityRenderDispatcher##tryExtractRenderState|getRenderer
-net\.minecraft\.client\.renderer\.blockentity\.BlockEntityRenderer##shouldRenderOffScreen
-net\.minecraft\.client\.particle\.ParticleEngine##public
-net\.minecraft\.client\.particle\.Particle##public
-net\.minecraft\.world\.level\.block\.state\.BlockState##isSolidRender|isValidModel|isFaceSturdy|isAir
-net\.minecraft\.core\.BlockPos##containing|public int get
-net\.minecraft\.world\.entity\.Entity##getId|getBoundingBox|getCustomName|shouldShowName|getRootVehicle|xOld|isRemoved|getGameProfile
-net\.minecraft\.client\.renderer\.culling\.Frustum##isVisible
-net\.minecraft\.client\.multiplayer\.ClientLevel##getBlockState|entitiesForRendering|getEntity
-net\.minecraft\.client\.renderer\.chunk\.ChunkRenderDispatcher##public
-net\.minecraft\.client\.renderer\.chunk\.ChunkRenderRegion##public
-net\.minecraft\.client\.renderer\.chunk\.ChunkRender##public
-net\.minecraft\.client\.renderer\.chunk\.ChunkSectionsToRender##public
-net\.minecraft\.client\.DeltaTracker##public
-net\.minecraft\.resources\.Identifier##of|parse|fromNamespace
-net\.minecraft\.util\.Mth##lerp|clamp|abs
-com\.mojang\.blaze3d\.platform\.Window##isFocused|isMinimized|getGuiScaled|getFramebuffer|setVsync
-net\.minecraft\.world\.phys\.AABB##inflate|intersects|minX
-net\.minecraft\.client\.Camera##getPosition
-net\.minecraft\.client\.renderer\.GameRenderer##renderLevel|render
-net\.minecraft\.client\.player\.LocalPlayer##getX|getZ
+# Keep this list short and sharp: the answer is size-capped, so broad regexes push
+# the useful answers off the end.
+net\.minecraft\.world\.level\.block\.state\.BlockState##isSolid|isOpaque|canOcclude|isValidModel|isFaceSturdy|isAir|emitsLight
+net\.minecraft\.world\.entity\.Entity##public int getId|getBoundingBox|getCustomName|shouldShowName|getRootVehicle|xOld|public double getX|public .* position
+net\.minecraft\.core\.BlockPos##public BlockPos\(|containing|public int getX
+net\.minecraft\.client\.gui\.Font##width|lineHeight|drawString
+net\.minecraft\.client\.gui\.GuiGraphicsExtractor##text|fill
+net\.minecraft\.resources\.Identifier##public static
+net\.minecraft\.util\.Mth##lerp|clamp
+net\.minecraft\.client\.Camera##getPosition|getPosition\(\)
+net\.minecraft\.client\.Minecraft##public void stop|isPaused|public final net.minecraft.client.gui.Font|getCameraEntity|public net.minecraft.client.multiplayer.ClientLevel|public .* player;|levelRenderer
+net\.minecraft\.client\.renderer\.LevelRenderer##allChanged|needsUpdate|setLevel|extractEntity|extractBlockEntities
+net\.minecraft\.client\.particle\.Particle##public double|public float|getParticleLimit
+net\.minecraft\.client\.renderer\.chunk\..*##public|class
+net\.minecraft\.client\.renderer\.GameRenderer##renderLevel|render\(|extract
+net\.minecraft\.client\.multiplayer\.ClientLevel##getBlockState|entitiesForRendering|getEntity\(|getState
+net\.minecraft\.client\.gui\.components\.Slider##.*
+net\.minecraft\.client\.gui\.components\.AbstractSliderButton##.*
+net\.minecraft\.client\.gui\.components\.EditBox##public net|EditBox\(
+net\.com\.vlansky?\.vulkan##.*
+net\.optifine##.*

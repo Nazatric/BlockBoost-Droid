@@ -86,6 +86,8 @@ public final class HotState {
     public static volatile FrameSampler frames;
     public static volatile ChunkPipelineStats chunkStats;
 
+    public static volatile double camX, camY, camZ;
+    public static volatile boolean cameraSeen;
     public static volatile long frameIndex;
     public static volatile long culledEntities;
     public static volatile long culledBlockEntities;

@@ -68,8 +68,10 @@ public final class VideoOverrideFeature implements Feature {
         int ao = s.triState(ConfigSchema.VANILLA_AMBIENT_OCCLUSION);
         if (ao == 1) {
             VanillaOptions.ambientOcclusion(client, true);
+            VanillaOptions.requestRendererReload(client);
         } else if (ao == 0) {
             VanillaOptions.ambientOcclusion(client, false);
+            VanillaOptions.requestRendererReload(client);
         }
         int shadows = s.triState(ConfigSchema.VANILLA_ENTITY_SHADOWS);
         if (shadows == 1) {

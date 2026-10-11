@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 import dev.blockboost.compat.ModCompatibility;
 import dev.blockboost.config.ConfigSchema;
 import dev.blockboost.config.ConfigStore;
+import dev.blockboost.config.Settings;
 import dev.blockboost.core.FeatureRegistry;
 import dev.blockboost.device.DeviceCapabilities;
 

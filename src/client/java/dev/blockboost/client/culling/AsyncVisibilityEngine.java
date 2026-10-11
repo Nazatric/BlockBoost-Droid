@@ -162,8 +162,10 @@ public final class AsyncVisibilityEngine implements AutoCloseable {
         }
         if (useFieldMode()) {
             submitAsync(req, maxDistance);
-            // Do not guess with a stale value: render this frame, decide the next.
-            return known == HIDDEN && cameraRecentlyMoved() ? VISIBLE : (known == UNKNOWN ? VISIBLE : known);
+            // Never guess from a value we know to be stale: render it this frame and
+            // use the worker's answer on a later one. One extra frame of work beats
+            // one wrong frame of missing terrain content.
+            return VISIBLE;
         }
         int budget = exactTestBudget();
         if (testsThisFrame >= budget) {

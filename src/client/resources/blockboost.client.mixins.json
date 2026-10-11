@@ -9,8 +9,9 @@
     "requireAnnotations": true
   },
   "client": [
-    "MinecraftFrameMixin",
+    "BlockEntityRenderDispatcherMixin",
     "LevelRendererMixin",
-    "BlockEntityRenderDispatcherMixin"
+    "MinecraftFrameMixin",
+    "ParticleEngineMixin"
   ]
 }

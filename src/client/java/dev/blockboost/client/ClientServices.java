@@ -90,15 +90,15 @@ public final class ClientServices implements FeatureEnvironment, AutoCloseable {
     public void onFrameStart() {
         long t = ticks.incrementAndGet();
         if (settings.bool(ConfigSchema.CULL_ENTITY)) {
+            // The camera position is captured by the level renderer mixin, from the
+            // exact Camera object the frame is being built with. Falling back to the
+            // player only matters on the first frame after a level loads.
             Minecraft c = Minecraft.getInstance();
-            double cx = 0, cy = 0, cz = 0;
-            try {
-                var cam = c.getMainCamera();
-                cx = cam.getPosition().x;
-                cy = cam.getPosition().y;
-                cz = cam.getPosition().z;
-            } catch (RuntimeException e) {
-                registryFail(e);
+            double cx = HotState.camX, cy = HotState.camY, cz = HotState.camZ;
+            if (!HotState.cameraSeen && c.player != null) {
+                cx = c.player.getX();
+                cy = c.player.getY();
+                cz = c.player.getZ();
             }
             visibility.beginFrame(t, cx, cy, cz);
             visibility.updateField(levelProbe());

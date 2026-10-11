@@ -4,6 +4,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import net.minecraft.client.renderer.LevelRenderer;
@@ -50,6 +51,23 @@ public final class LevelRendererMixin {
             state.nameTag = entity.getDisplayName();
         }
         cir.setReturnValue(state);
+    }
+
+    /**
+     * Captures the camera the frame is actually built from, and resets the per-frame
+     * culling budget where it belongs: at the point the level's render states start.
+     */
+    @Inject(method = "extractVisibleEntities", at = @At("HEAD"))
+    private void blockboost$noteCamera(net.minecraft.client.Camera camera,
+                                       net.minecraft.client.renderer.culling.Frustum frustum,
+                                       net.minecraft.client.DeltaTracker tracker,
+                                       net.minecraft.client.renderer.state.level.LevelRenderState state,
+                                       CallbackInfo ci) {
+        var pos = camera.getPosition();
+        HotState.camX = pos.x;
+        HotState.camY = pos.y;
+        HotState.camZ = pos.z;
+        HotState.cameraSeen = true;
     }
 
     /**

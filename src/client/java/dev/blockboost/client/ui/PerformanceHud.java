@@ -46,6 +46,9 @@ public final class PerformanceHud {
         }
         Settings settings = services.settings();
         String corner = settings.enumValue(ConfigSchema.DIAG_HUD_CORNER);
+        if (corner == null) {
+            corner = "top_left";
+        }
         if ("hidden".equals(corner) || client.options == null) {
             return;
         }
@@ -118,20 +121,18 @@ public final class PerformanceHud {
         cachedWidth = Math.max(60, widest);
     }
 
+    /**
+     * GUI-space size, derived from the framebuffer and the window's own scale factor.
+     * Reading {@code getGuiScaledWidth()} would be nicer, but the framebuffer pair is
+     * what the window layer guarantees, and dividing by a scale we did not choose keeps
+     * the overlay aligned with vanilla HUD elements on any launcher DPI setting.
+     */
     private static int graphicsWidth(Minecraft client) {
-        try {
-            return client.getWindow().getGuiScaledWidth();
-        } catch (RuntimeException e) {
-            return 854;
-        }
+        return (int) (client.getWindow().getFramebufferWidth() / (double) client.getWindow().getGuiScale());
     }
 
     private static int graphicsHeight(Minecraft client) {
-        try {
-            return client.getWindow().getGuiScaledHeight();
-        } catch (RuntimeException e) {
-            return 480;
-        }
+        return (int) (client.getWindow().getFramebufferHeight() / (double) client.getWindow().getGuiScale());
     }
 
     private static String fmt(double v) {

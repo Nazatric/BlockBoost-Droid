@@ -6,7 +6,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import com.mojang.blaze3d.platform.InputConstants;
 
 import net.minecraft.client.DeltaTracker;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -55,8 +54,9 @@ public final class BlockBoostClient implements ClientModInitializer {
     private static KeyMapping settingsKey;
     private static KeyMapping hudKey;
     private static final AtomicBoolean HUD_VISIBLE = new AtomicBoolean(true);
-    private static final AtomicBoolean OPTIONS_HOOKED = new AtomicBoolean();
     private static final AtomicBoolean NOTIFY_DONE = new AtomicBoolean();
+    private static final AtomicBoolean SETTINGS_HINT_SHOWN = new AtomicBoolean();
+    private final AtomicBoolean settingsShown = new AtomicBoolean();
     private static VideoOverrideFeature videoOverride;
     private static FramePacingFeature framePacing;
     private static ParticleBudgetFeature particleBudget;
@@ -119,7 +119,6 @@ public final class BlockBoostClient implements ClientModInitializer {
             applyFeatureSettings();
         });
 
-        registerOptionsScreenAccess();
         registerKeybinds(settings);
         registerHud(settings);
         registerTickLoop(runtime, settings);
@@ -211,42 +210,10 @@ public final class BlockBoostClient implements ClientModInitializer {
     }
 
     /**
-     * Adds a BlockBoost button to the vanilla video settings screen, so the mod is
-     * reachable even with no Mod Menu installed. This uses Fabric's screen event plus
-     * a vanilla {@code Button} instead of a mixin into the options screen, because the
-     * widget list on that screen has been renamed in every second version and a mod
-     * that optimizes framerate has no business crashing a settings screen.
+     * One-time chat hint. The settings screen is reachable by keybind and through Mod
+     * Menu; a launcher with no keyboard and no Mod Menu is exactly the case where a
+     * single line in chat telling you the file path beats a silent UI you cannot find.
      */
-    private void registerOptionsScreenAccess() {
-        if (!OPTIONS_HOOKED.compareAndSet(false, true)) {
-            return;
-        }
-        try {
-            net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.AFTER_INIT.register(
-                    (client, screen, scaledWidth, scaledHeight) -> {
-                        if (!(screen instanceof net.minecraft.client.gui.screens.options.OptionsScreen)
-                                || !HOTSWAP_ALLOWED) {
-                            return;
-                        }
-                        try {
-                            screen.addRenderableWidget(Button.builder(
-                                    Component.translatable("blockboost.screen.title"),
-                                    button -> client.setScreen(new dev.blockboost.client.ui.BlockBoostSettingsScreen(
-                                            screen, BlockBoostRuntime.get(), services)))
-                                    .bounds(scaledWidth / 2 - 100, scaledHeight - 36, 100, 20)
-                                    .build());
-                        } catch (RuntimeException | LinkageError e) {
-                            BlockBoost.LOG.debug("[BlockBoost] options screen button unavailable", e);
-                        }
-                    });
-        } catch (RuntimeException | LinkageError e) {
-            BlockBoost.LOG.warn("[BlockBoost] options screen hook unavailable; use the keybind or Mod Menu",
-                    e);
-        }
-    }
-
-    private static final boolean HOTSWAP_ALLOWED = true;
-
     private static void extractHud(GuiGraphicsExtractor graphics, DeltaTracker tracker) {
         ClientServices svc = services;
         if (svc == null || !HUD_VISIBLE.get() || svc.settings().is(ConfigSchema.DIAG_HUD, "off")) {
@@ -310,7 +277,12 @@ public final class BlockBoostClient implements ClientModInitializer {
                 break;
             }
         }
-        if (!warn) {
+        if (!warn && client.player != null && !settingsShown.getAndSet(true)) {
+            // First run only: where the settings are, phrased for a phone where a
+            // keybind may not be reachable without the launcher's keyboard.
+            client.player.sendSystemMessage(Component.literal(
+                    "[BlockBoost] settings: press O, or Mod Menu -> BlockBoost. Config: "
+                            + runtime.configPath());
             return;
         }
         if (client.player == null) {
