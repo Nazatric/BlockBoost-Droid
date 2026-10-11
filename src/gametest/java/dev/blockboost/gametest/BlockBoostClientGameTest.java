@@ -90,7 +90,7 @@ public final class BlockBoostClientGameTest implements FabricClientGameTest {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             singleplayer.getClientLevel().waitForChunksRender();
             for (int i = 0; i < 40; i++) {
-                context.waitTick(1);
+                context.waitTick();
             }
             assertEquals(0, registry.failureCount(), "a feature failed while the world ran");
             assertFalse(runtime.registry().isQuarantined(FeatureId.ENTITY_CULLING),
