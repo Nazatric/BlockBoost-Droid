@@ -1,27 +1,19 @@
-# Questions asked of the javap dump produced by ./gradlew dumpMinecraftApi.
-# One per line:  ClassRegex##MemberRegex   (# lines ignored)
-# The reporter answers each in order against the real 26.1.2 jar, capped per question
-# and overall, so list only what this project is about to call - in priority order.
-# An absent answer means the class regex found no section in the dump (see
-# tools/recon-classes.txt for what the dump covers), not that the member is missing.
-
+# Questions asked of the javap dump (./gradlew dumpMinecraftApi), in priority order.
+# Format:  ClassRegex##MemberRegex  - capped per question and per report, so ask
+# for the members this project is about to call, not a class's whole surface.
 net\.minecraft\.client\.Minecraft##Font |getFont|public void stop|public void close|isPaused|public net.minecraft.client.multiplayer.ClientLevel|public net.minecraft.client.player.LocalPlayer|getMainWindow
-
 net\.minecraft\.client\.renderer\.chunk\..*##^class |^public class
-
 net\.minecraft\.client\.Options##getEffective|save\(|gamma|language|chatOpacity|aoMode|graphicsMode|fullscreen
-
 net\.minecraft\.client\.player\.(Abstract|Local)Player##public
-
 net\.minecraft\.client\.gui\.components\.(Slider|AbstractSliderButton)##public
-
 net\.minecraft\.client\.gui\.components\.EditBox##EditBox\(|public
-
 net\.minecraft\.client\.gui\.components\.Button\$Builder##bounds|create
-
 net\.minecraft\.client\.gui\.components\.CycleButton##public
-
 net\.minecraft\.client\.Window##public|getWidth|getHeight|getGuiScale|getFramebufferWidth|setVsync
-
 net\.minecraft\.client\.multiplayer\.ClientLevel##getBlockState|entitiesForRendering|getEntity\(|isClientSide
-
+net\.minecraft\.client\.gui\.Screen##public boolean should|public boolean isPause|public void extract|protected void init|onClose|public void render
+com\.mojang\.blaze3d\.platform\.Window##public int get|public double get|getGuiScale|getWidth|getHeight|isFocused|isMinimized
+package listing: net/minecraft/client/renderer/chunk##.
+package listing: net/minecraft/client/renderer/extract##.
+net\.minecraft\.client\.particle\.ParticleEngine##public void add|public .* add\(
+net\.minecraft\.client\.Options##^public net\.minecraft\.client\.OptionInstance
