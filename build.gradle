@@ -51,9 +51,12 @@ dependencies {
 
     // Fabric Loader JUnit gives unit tests a bootstrapped game classpath.
     testImplementation "net.fabricmc:fabric-loader-junit:${project.loader_version}"
-    testImplementation platform("org.junit.jupiter:junit-jupiter:5.11.4")
-    testImplementation "org.junit.jupiter:junit-jupiter"
-    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+    // The real jars, not the junit-jupiter aggregate module: under Gradle 9 with a
+    // Java 25 toolchain the aggregate's variant metadata refused to resolve, and
+    // api/engine/launcher is exactly what these tests use anyway.
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.11.4"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.11.4"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.11.4"
 }
 
 base {
@@ -206,7 +209,9 @@ fabricApi {
 	configureTests {
 		createSourceSet = true
 		modId = "blockboost-test"
-		enableGameTests = true
+		// Server-side game tests are not part of this mod: it is client-only,
+		// and enabling them makes the harness configure a server run we never use.
+		enableGameTests = false
 		enableClientGameTests = true
 		eula = true // The game test harness starts a real client; this agrees to the Minecraft EULA for CI only.
 	}
