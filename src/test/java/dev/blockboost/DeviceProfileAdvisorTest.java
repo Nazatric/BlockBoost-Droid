@@ -62,10 +62,14 @@ class DeviceProfileAdvisorTest {
                     // vsync may be written, but only to "auto" - which means "hands off".
                     Object vsync = rec.patch().get(ConfigSchema.RENDER_VSYNC);
                     assertTrue(vsync == null || "auto".equals(vsync), "vsync was forced to " + vsync);
-                    // Nothing else in the render group may sneak in either: an idle cap or a
-                    // pacing change is as invisible as a vsync flip when it comes to blame.
-                    assertFalse(rec.patch().containsKey(ConfigSchema.RENDER_IDLE_THROTTLE),
-                            "idle behaviour was switched without being asked");
+                    // And the automatic profile may never reach into the player's own video
+                    // settings: those are the ones that change what the game looks like, and
+                    // an optimization mod that quietly redraws the world at 4 chunks has
+                    // answered a question nobody asked.
+                    for (SettingKey key : rec.patch().keySet()) {
+                        assertFalse(key.path().startsWith("render.vanilla_"),
+                                "auto profile rewrote a vanilla video option: " + key.path());
+                    }
                 }
             }
         }

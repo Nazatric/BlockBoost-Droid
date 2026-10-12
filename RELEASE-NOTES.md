@@ -1,7 +1,10 @@
 # BlockBoost 1.0.0 for Minecraft 26.1.2 (Android first)
 
-The file to download: **`blockboost-1.0.0-mc26.1.2.jar`** (attached below, and committed at
-the repository root so it is also reachable from the file list).
+The file to download: **`blockboost-1.0.0-mc26.1.2.jar`**, attached to this release. The same
+bytes are in the CI artifact `blockboost-jar` for the commit it names; the jar is deliberately
+not committed into the branch, because a binary pushed onto a working branch by CI moves it
+under whoever is working there. Built locally, it lands at
+`build/libs/blockboost-1.0.0+mc26.1.2.jar`.
 
 ## What you need alongside it
 
@@ -27,15 +30,37 @@ visibility culling with a cached, budgeted occlusion test; a real per-frame part
 ceiling; bounded, drop-oldest worker pools with thread-local scratch; memory hygiene with
 fixed-capacity caches; adaptive frame-time control (advise or act, with hysteresis, cooldown
 and automatic stand-down); vanilla video-option overrides (tri-state, restores on switch
-off); chunk backlog guard; frame pacing and idle throttling; capability-based renderer
-profiles; diagnostics (frame distribution with p95/p99 and 1% lows, GC pauses, culled and
-suppressed counts, pool queue/drop counters); and a touch-first settings screen with 11
-sections, a filter field, per-setting explanations, 7 presets with a diff preview and a
-reset-with-confirmation.
+off); chunk backlog guard; a frame cap and vsync written through the game's own limiter rather
+than a limiter of ours; idle throttling for an unfocused or minimized window; capability-based
+renderer profiles; a device-class automatic profile that runs once on the first frame;
+diagnostics (frame distribution with p95/p99 and 1% lows, GC pauses, culled and suppressed
+counts, pool queue/drop counters, the game's own throttle reason); and a touch-first settings
+screen with six sections (Performance overview, Smart optimization, Rendering & visuals, Chunks
+& world, Memory & stability, Advanced), a filter field, permanent one-line explanations on every
+row, side-effect notes, six presets with a diff preview, and reset-with-confirmation per
+section.
 
 Full list and design rationale: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md),
 [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md). Install steps:
 [`docs/INSTALL-ANDROID.md`](docs/INSTALL-ANDROID.md).
+
+## What changed in this build
+
+* **A regression audit, and deletions.** The frame cap no longer forces vsync, and the mod's own
+  end-of-frame limiter is gone together with its two settings (`render.soft_pacing`,
+  `render.smooth_pacing`); the ceiling is written into `FramerateLimitTracker`, the limiter the
+  render loop already respects. Occlusion work that previously cost about 220 000 level reads per
+  frame now runs inside a probe **and** millisecond budget with block-shape memoization, an
+  allocation-free hot path, reusable job slots with a reclaim path, and a fail-open direction that
+  draws anything it cannot decide in time.
+* **Automatic device profile.** `Automatic` classifies the device from cores/heap/arch/GL strings
+  once, on the first frame, on a fresh install only, and never writes a frame cap, a vsync state or
+  one of your video options — there are tests that walk the whole heuristic grid to prove it.
+* **Settings screen rebuilt** around what a person is deciding, with all text and bars drawn from
+  prepared strings and every widget created once. It is exercised on a live client by the game test
+  now, not just compiled.
+* **CI**: the publish job stops committing the jar into the branch (release asset only), and the
+  client-launch report now greps the game test's own measurement lines instead of tailing a log.
 
 ## What this release has *not* been measured on
 

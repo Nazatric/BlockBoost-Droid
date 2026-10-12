@@ -172,11 +172,21 @@ jobs:
         if: always()
         run: |
           {
-            echo "### Benchmark samples (blockboost/bench/latest-summary.txt)"
-            find . -name "latest-summary.txt" -path "*bench*" -exec cat {} \; 2>/dev/null || echo "(no benchmark output)"
+            # The numbers we actually measured, not a log tail: the interesting lines are
+            # written by the test itself and would otherwise scroll out of a 200-line tail.
+            echo "### BlockBoost game test: what it measured"
+            find . -path "*blockboost*" -name "*.txt" -print 2>/dev/null | head -20
+            find . -path "*blockboost/bench*" -name "*.txt" -exec cat {} \; 2>/dev/null \
+              || echo "(no bench summary written)"
+            echo
+            echo "#### mod log lines (grep, not tail)"
+            grep -a "\[BlockBoost" /tmp/gametest.log | grep -av "loading\|registered\|Mixin\|feature " | head -60
+            echo
+            echo "#### failures / exceptions"
+            grep -a -i "assertionerror\|exception in thread\|FAILED\|quarantin" /tmp/gametest.log | head -30
             echo
             echo "### Game test log tail"
-            tail -n 200 /tmp/gametest.log
+            tail -n 60 /tmp/gametest.log
           } > /tmp/launch-report.txt 2>&1 || true
           cat /tmp/launch-report.txt
 

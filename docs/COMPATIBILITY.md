@@ -29,6 +29,19 @@ how you get a black screen in someone else's mod.
 
 ## Device class
 
+The automatic profile is a pure function of the numbers the JVM will actually answer with
+(cores, heap ceiling, arch, Android hints, GL vendor/renderer, whether the GL path is a
+translator), evaluated once on the first frame and cached for the session. `LOW` requires a small
+heap **and** few cores; `HIGH` requires real headroom **and** a non-mobile arch; unknown numbers
+mean `UNKNOWN`, which means one worker and no asynchronous culling. A flagship GPU name in a 2 GB
+heap is still `LOW` — the GPU string only makes the profile *more* conservative, never less, and
+the patch it writes can never contain a frame cap, a vsync state, or any `render.vanilla_*` video
+option (`DeviceProfileAdvisorTest` asserts that over the whole grid, not on one device).
+
+Detection is cached and never re-run per frame; nothing is shown as active in the settings screen
+unless its `Feature` initialized, and a subsystem that another mod already owns reports
+`handled by another mod` as the reason rather than silently doing double work.
+
 `android.device_class` is `low | mid | high | unknown`, and `unknown` is the default. It
 scales three things only: the per-frame culling test budget, the worker-thread ceiling,
 and which particle tier the budget maps to. It never changes what is visible.

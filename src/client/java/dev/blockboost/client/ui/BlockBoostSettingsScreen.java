@@ -73,11 +73,10 @@ public final class BlockBoostSettingsScreen extends Screen {
                 "Caches, allocation pressure and the switches that make the mod back off.",
                 new SettingKey.Category[] {SettingKey.Category.MEMORY, SettingKey.Category.COMPAT}),
         ADVANCED("Advanced",
-                "The knobs that only matter when something is being investigated.",
-                new SettingKey.Category[] {SettingKey.Category.ADVANCED}),
-        DIAGNOSTICS("Diagnostics",
-                "The overlay, sampling and the report this project asks you to paste with a bug.",
-                new SettingKey.Category[] {SettingKey.Category.DIAGNOSTICS, SettingKey.Category.ADAPTIVE});
+                "Diagnostics, sampling, the adaptive controller and every knob that only matters"
+                        + " while something is being investigated.",
+                new SettingKey.Category[] {SettingKey.Category.ADVANCED, SettingKey.Category.DIAGNOSTICS,
+                        SettingKey.Category.ADAPTIVE});
 
         final String title;
         final String blurb;
