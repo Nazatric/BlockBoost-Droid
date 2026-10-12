@@ -209,9 +209,11 @@ fabricApi {
 	configureTests {
 		createSourceSet = true
 		modId = "blockboost-test"
-		// Server-side game tests are not part of this mod: it is client-only,
-		// and enabling them makes the harness configure a server run we never use.
-		enableGameTests = false
+		// The client game-test task is registered as part of the game-test feature: with
+		// enableGameTests = false the plugin registers no run at all, and the assertions in
+		// src/gametest then never execute while CI still looks green. The server task exists
+		// as a side effect and is simply never invoked - this mod is client-side.
+		enableGameTests = true
 		enableClientGameTests = true
 		eula = true // The game test harness starts a real client; this agrees to the Minecraft EULA for CI only.
 	}
