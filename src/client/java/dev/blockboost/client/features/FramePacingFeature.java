@@ -11,18 +11,22 @@ import dev.blockboost.core.FeatureId;
 import dev.blockboost.core.FeatureRuntimeContext;
 
 /**
- * Frame cap, vsync and the unfocused-window throttle.
+ * Frame cap, vsync and the unfocused-window throttle - all three written into the game's
+ * own state, none of them implemented here.
  *
- * <p>All three are vanilla options rather than GL calls, which is the only way this
- * is correct on a phone: under MobileGlues/GL4ES, setting swap interval yourself is
- * a driver-dependent experiment (the extension may be absent, or it may apply to a
- * different context than the one drawing your frame), while {@code enableVsync} and
- * {@code maxFramerate}-equivalent ceiling, vsync and the idle reduction go through
- * the option set the game already owns, never through the graphics API.
+ * <p>That is the whole design, and it is deliberate. A cap only helps if it is the frame
+ * limiter the render loop actually respects: 26.1.2 keeps that in
+ * {@code com.mojang.blaze3d.platform.FramerateLimitTracker}, which the game's limiter
+ * parks against, so writing the ceiling there behaves exactly like the video setting and
+ * costs nothing when the cap is off. A second limiter of our own - sleeping the render
+ * thread to hit a number - was tried first and was a regression: it fought vsync, it
+ * turned an almost-on-time frame into a late one, and under MobileGlues/GL4ES the swap
+ * interval it depended on is driver-dependent anyway. Same story for vsync: the option
+ * the game owns is written, the GL call is not.
  *
- * <p>The idle throttle is the one with the biggest measured effect on a phone that
- * is not in a world at all — a menu at 300 fps is a phone at 100% GPU load for no
- * reason, and battery and thermals are the whole game on that device.
+ * <p>The idle throttle is the one with the biggest measured effect on a phone that is
+ * not in a world at all - a menu at 300 fps is a phone at 100% GPU load for no reason,
+ * and battery and thermals are the whole game on that device.
  */
 public final class FramePacingFeature implements Feature {
 
@@ -39,8 +43,8 @@ public final class FramePacingFeature implements Feature {
 
     @Override
     public boolean enabledByConfig(Settings settings) {
-        return settings.integer(ConfigSchema.RENDER_FRAME_CAP) >= 0
-                || !settings.is(ConfigSchema.RENDER_VSYNC, "ignore")
+        return settings.integer(ConfigSchema.RENDER_FRAME_CAP) > 0
+                || !settings.is(ConfigSchema.RENDER_VSYNC, "auto")
                 || settings.bool(ConfigSchema.RENDER_IDLE_THROTTLE);
     }
 
@@ -64,7 +68,8 @@ public final class FramePacingFeature implements Feature {
     @Override
     public void onDeactivate(FeatureRuntimeContext ctx) {
         Minecraft client = Minecraft.getInstance();
-        VanillaOptions.restore(client, "maxFramerate");
+        // Hand the limit back: 0 means "whatever the game had before we wrote it".
+        VanillaOptions.noteRequestedFrameCap(client, 0);
         VanillaOptions.restore(client, "enableVsync");
         VanillaOptions.persist(client);
         idleApplied = false;
@@ -85,7 +90,7 @@ public final class FramePacingFeature implements Feature {
             // vsync is the only supported way to cap frames here, so the cap is only
             // allowed to drive it while the user has left vsync on "ignore"; otherwise
             // two settings would fight and the one you touched would lose.
-            VanillaOptions.noteRequestedFrameCap(Math.max(0, cap));
+            VanillaOptions.noteRequestedFrameCap(client, Math.max(0, cap));
             lastCap = cap;
         }
         if ("on".equals(vsync) && !Boolean.TRUE.equals(lastVsync)) {
@@ -129,14 +134,14 @@ public final class FramePacingFeature implements Feature {
                     ? null : client.options.particles().get().name();
             // An unfocused window on a phone means the screen is off or another app is
             // foreground: cut the work that costs power and heat, all of it reversible.
-            VanillaOptions.noteRequestedFrameCap(Math.max(1, HotState.idleFrameCap));
+            VanillaOptions.noteRequestedFrameCap(client, Math.max(1, HotState.idleFrameCap));
             if (lastRenderDistance > 4) {
                 VanillaOptions.renderDistance(client, Math.max(2, lastRenderDistance - 2));
                 VanillaOptions.simulationDistance(client, Math.max(2, lastRenderDistance - 3));
             }
             VanillaOptions.particles(client, net.minecraft.server.level.ParticleStatus.MINIMAL);
         } else if (lastCap != Integer.MIN_VALUE) {
-            VanillaOptions.noteRequestedFrameCap(lastCap);
+            VanillaOptions.noteRequestedFrameCap(client, lastCap);
             if (lastRenderDistance > 0) {
                 VanillaOptions.renderDistance(client, lastRenderDistance);
                 VanillaOptions.simulationDistance(client, Math.max(2, lastRenderDistance - 1));

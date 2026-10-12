@@ -135,7 +135,6 @@ public final class DeviceProfileAdvisor {
         // and the driver own pacing and filtering there, and guessing wrong is the kind of
         // change that makes a game feel broken.
         patch.put(ConfigSchema.RENDER_VSYNC, "auto");
-        patch.put(ConfigSchema.RENDER_SOFT_PACING, false);
         reasons.add(translatedGl
                 ? "GL translator detected (" + safe(gpuVendor) + " / " + safe(gpuRenderer)
                         + "): vsync and filtering left to you and the driver"

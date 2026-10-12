@@ -62,7 +62,10 @@ class DeviceProfileAdvisorTest {
                     // vsync may be written, but only to "auto" - which means "hands off".
                     Object vsync = rec.patch().get(ConfigSchema.RENDER_VSYNC);
                     assertTrue(vsync == null || "auto".equals(vsync), "vsync was forced to " + vsync);
-                    assertEquals(Boolean.FALSE, rec.patch().get(ConfigSchema.RENDER_SOFT_PACING));
+                    // Nothing else in the render group may sneak in either: an idle cap or a
+                    // pacing change is as invisible as a vsync flip when it comes to blame.
+                    assertFalse(rec.patch().containsKey(ConfigSchema.RENDER_IDLE_THROTTLE),
+                            "idle behaviour was switched without being asked");
                 }
             }
         }

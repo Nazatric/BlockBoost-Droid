@@ -47,6 +47,7 @@ public final class DeviceCapabilities {
     private volatile DeviceClass deviceClass = DeviceClass.UNKNOWN;
     private volatile String profileSource = "not resolved yet";
     private volatile boolean gpuAttempted;
+    private volatile int displayRefreshRate;
 
     private DeviceCapabilities() {
         Runtime rt = Runtime.getRuntime();
@@ -202,6 +203,19 @@ public final class DeviceCapabilities {
     }
 
     /** Lines for the report; everything uncertain says so in words. */
+    /**
+     * The display mode the window was created with, in hertz, or 0 when unknown. Owned by
+     * the client module because only it can see the window; the number exists so the frame
+     * cap can be *explained* against a real panel instead of a guessed 60.
+     */
+    public int displayRefreshRate() {
+        return displayRefreshRate;
+    }
+
+    public void setDisplayRefreshRate(int hz) {
+        this.displayRefreshRate = Math.max(0, hz);
+    }
+
     public List<String> reportLines() {
         List<String> out = new ArrayList<>();
         out.add("os=" + osName + " " + osVersion + "  arch=" + osArch + (mobileArch ? " (mobile ARM)" : ""));
@@ -221,6 +235,12 @@ public final class DeviceCapabilities {
             out.add("launcher heap flags: " + firstFlagWith("-Xmx"));
         } else {
             out.add("launcher heap flags: none -Xmx set (JVM default applies; BlockBoost never changes this)");
+        }
+        if (displayRefreshRate > 0) {
+            out.add("display mode reported by the window=" + displayRefreshRate + " Hz"
+                    + " (a cap at this number costs no frames; above it the frames are simply not shown)");
+        } else {
+            out.add("display mode=not reported by the window");
         }
         out.add("not readable from a Fabric mod, therefore never reported as a number: SoC model,"
                 + " thermal throttling state, GPU clock, driver version, per-cluster core frequencies.");

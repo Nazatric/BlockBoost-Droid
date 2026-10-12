@@ -36,24 +36,19 @@ public final class ConfigSchema {
     // ── A. Rendering & frame submission ─────────────────────────────────────
     public static final SettingKey RENDER_FRAME_CAP = SettingKey.intRange(
             "render.framerate_cap", 0, 0, 1000, RENDERING, SAFE, false,
-            "Hard cap on frames per second. 0 leaves the game uncapped. This is the cheapest way to stop a phone from cooking itself while it waits on the render queue.");
+            "Hard cap on frames per second, written into the game's own frame limiter rather than "
+            + "a sleep of ours. 0 restores whatever the game was doing before. On a phone this is "
+            + "the cheapest way to stop the device cooking itself while it waits on the render "
+            + "queue, and a cap at the panel refresh rate is usually free.");
     public static final SettingKey RENDER_VSYNC = SettingKey.enumOf(
             "render.vsync", "auto", List.of("auto", "on", "off"), RENDERING, SAFE, false,
-            "Overrides the vertical sync state. On translated GL stacks the swap interval is the real frame limiter, so getting this wrong is why a phone sits at exactly 60.");
-    public static final SettingKey RENDER_SMOOTH_PACING = SettingKey.bool(
-            "render.smooth_pacing", true, RENDERING, SAFE, false,
-            "Aims the framerate cap at a hair above the ideal interval so a frame that misses the deadline by microseconds does not stall a whole extra refresh.");
+            "Overrides the game's vertical sync option. 'auto' means BlockBoost never touches it. On "
+            + "translated GL stacks the swap interval is often the only limiter that works, which is "
+            + "why a phone can sit at exactly 60 - but that is a decision to make with your own eyes "
+            + "on the smoothness, not one to take automatically.");
     public static final SettingKey RENDER_IDLE_THROTTLE = SettingKey.bool(
             "render.idle_throttle", true, RENDERING, SAFE, false,
             "While no world is open, or the window has no focus, the cap drops to the idle value. Big battery win, zero gameplay effect.");
-    public static final SettingKey RENDER_SOFT_PACING = SettingKey.bool(
-            "render.soft_pacing", false, RENDERING, SAFE, false,
-            "Optional frame limiter: when a frame finishes far ahead of the cap, the render "
-            + "thread waits out the remainder instead of drawing more. Off by default, because "
-            + "vsync is the smoother limiter where the driver supports it - this one exists for "
-            + "setups where vsync is missing, unreliable, or costs more than a short timed wait. "
-            + "It only ever sleeps when there is more than a frame and a half of slack, so it "
-            + "cannot turn a good frame into a late one.");
     public static final SettingKey RENDER_IDLE_FRAME_CAP = SettingKey.intRange(
             "render.idle_framerate_cap", 20, 5, 240, RENDERING, SAFE, false,
             "The reduced cap used while idle or unfocused.");

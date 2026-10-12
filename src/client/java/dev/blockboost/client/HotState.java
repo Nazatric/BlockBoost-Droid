@@ -71,7 +71,6 @@ public final class HotState {
     public static volatile boolean framePacing;
     public static volatile boolean idleThrottle;
     public static volatile int idleFrameCap;
-    public static volatile boolean softPacing;
     public static volatile int frameCap;
     public static volatile boolean videoOverrides;
 
@@ -135,10 +134,11 @@ public final class HotState {
         stableLookups = s.bool(ConfigSchema.CPU_STABLE_LOOKUP_CACHE);
         releaseOnExit = s.bool(ConfigSchema.MEM_RELEASE_ON_EXIT);
 
-        framePacing = registry.isActive(FeatureId.FRAME_PACING) && s.bool(ConfigSchema.RENDER_SMOOTH_PACING);
+        // The cap itself is written into vanilla's limiter by FramePacingFeature, so there is
+        // nothing left for the frame hook to do besides the idle reduction.
+        framePacing = registry.isActive(FeatureId.FRAME_PACING) && s.bool(ConfigSchema.RENDER_IDLE_THROTTLE);
         idleThrottle = s.bool(ConfigSchema.RENDER_IDLE_THROTTLE);
         idleFrameCap = s.integer(ConfigSchema.RENDER_IDLE_FRAME_CAP);
-        softPacing = s.bool(ConfigSchema.RENDER_SOFT_PACING);
         frameCap = s.integer(ConfigSchema.RENDER_FRAME_CAP);
         videoOverrides = registry.isActive(FeatureId.VIDEO_OVERRIDES) && s.bool(ConfigSchema.RENDER_VIDEO_OVERRIDES);
 

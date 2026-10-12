@@ -177,16 +177,6 @@ public final class ClientServices implements FeatureEnvironment, AutoCloseable {
         return text;
     }
 
-    /**
-     * Optional frame limiter, off unless {@code render.soft_pacing} is on.
-     *
-     * <p>It waits out a frame only when the frame finished with more than 1.5 ms to
-     * spare, and it leaves half a millisecond of margin, so it can never turn a frame
-     * that was going to be on time into one that is late. The point is not to hit a
-     * number on the FPS overlay: it is to stop the GPU and the memory subsystem doing
-     * work nobody asked for while the phone is thermally limited, which is the only way
-     * a cap actually helps on hardware where vsync is unreliable.
-     */
     private volatile boolean autoProfileConsidered;
     private volatile List<String> lastAutoLines = List.of();
 
@@ -252,38 +242,12 @@ public final class ClientServices implements FeatureEnvironment, AutoCloseable {
         return rec.describe();
     }
 
-    private void pace(long frameEndNanos) {
-        if (!HotState.softPacing) {
-            return;
-        }
-        Minecraft client = Minecraft.getInstance();
-        int cap = HotState.frameCap;
-        if (cap <= 0 && client != null && isWindowHidden(client) && settings.bool(ConfigSchema.RENDER_IDLE_THROTTLE)) {
-            cap = HotState.idleFrameCap;
-        }
-        if (cap <= 0) {
-            return;
-        }
-        long target = 1_000_000_000L / cap;
-        long slack = target - (frameEndNanos - frameStartNanos);
-        if (slack < 1_500_000L) {
-            return;
-        }
-        try {
-            java.util.concurrent.locks.LockSupport.parkNanos(slack - 500_000L);
-        } catch (Throwable ignored) {
-            // A parked thread that wakes early or late is a cosmetic problem, not a
-            // correctness one, and the game must never see an exception from a limiter.
-        }
-    }
-
     private static String fmt(double v) {
         return Double.isFinite(v) ? String.format(java.util.Locale.ROOT, "%.3f", v) : "0.000";
     }
 
     public void onFrameEnd() {
         long now = System.nanoTime();
-        pace(now);
         frames.sampleNow(now);
         if ((ticks.get() & 15L) == 0) {
             visibility.publishCounters();
@@ -294,6 +258,13 @@ public final class ClientServices implements FeatureEnvironment, AutoCloseable {
             try {
                 device.tryReadGpuOnce();
                 device.resolveFromSettings(settings);
+                // The window exists by now, and its mode is the only honest answer to
+                // "what would a cap cost me". Read once, never again: it cannot change
+                // under us without the game noticing, and the game owns that change.
+                Minecraft windowed = Minecraft.getInstance();
+                if (device.displayRefreshRate() <= 0 && windowed != null && windowed.getWindow() != null) {
+                    device.setDisplayRefreshRate(windowed.getWindow().getRefreshRate());
+                }
             } catch (Throwable t) {
                 BlockBoost.LOG.warn("[BlockBoost] renderer probe failed; staying conservative", t);
             }

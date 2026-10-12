@@ -541,6 +541,15 @@ public final class BlockBoostSettingsScreen extends Screen {
                     + services.frames().missedTargetFrames() + " frames");
         }
         out.add("");
+        out.add("#What the game is doing to itself");
+        Minecraft client = Minecraft.getInstance();
+        out.add("  limiter: " + dev.blockboost.client.features.VanillaOptions.throttleReport(client));
+        int cap = runtime.settings().integer(ConfigSchema.RENDER_FRAME_CAP);
+        int hz = runtime.device() == null ? 0 : runtime.device().displayRefreshRate();
+        out.add("  asked for: " + (cap <= 0 ? "no cap from BlockBoost" : cap + " fps")
+                + (hz > 0 ? " (panel refreshes at " + hz + " Hz)" : "")
+                + " - never set automatically");
+        out.add("");
         out.add("#Configuration");
         out.add("  file: " + runtime.configPath());
         out.add("  preset: " + runtime.settings().presetName() + "  (applied patch, not a saved profile)");
@@ -795,6 +804,16 @@ public final class BlockBoostSettingsScreen extends Screen {
         String path = key.path();
         if (path.startsWith("render.")) {
             out.add("Changes how often frames are produced, so it changes heat and battery too.");
+        }
+        if (path.equals("render.framerate_cap")) {
+            out.add("Written into the game's own frame limiter, so it behaves like the video-setting cap;"
+                    + " 0 gives the limit back to the game. There is deliberately no second limiter of"
+                    + " ours: sleeping the render thread to hit a number made frames later, not fewer.");
+        }
+        if (path.equals("render.vsync")) {
+            out.add("Writes the game's vertical sync option and never calls the graphics API directly."
+                    + " On a translated GL stack this is the setting that decides whether a cap is"
+                    + " honoured smoothly or at all, so try it by feel rather than trusting a default.");
         }
         if (path.startsWith("culling.")) {
             out.add("Only ever decides whether to skip drawing something already off screen or fully"

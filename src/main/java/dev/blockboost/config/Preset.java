@@ -26,7 +26,6 @@ public record Preset(String id, String nameKey, String tooltipKey, Map<SettingKe
             s -> {
                 s.put(ConfigSchema.RENDER_FRAME_CAP, 0);
                 s.put(ConfigSchema.RENDER_VSYNC, "off");
-                s.put(ConfigSchema.RENDER_SMOOTH_PACING, true);
                 s.put(ConfigSchema.RENDER_VIDEO_OVERRIDES, true);
                 s.put(ConfigSchema.VANILLA_MIPMAP, 3);
                 s.put(ConfigSchema.VANILLA_BIOME_BLEND, 1);
@@ -63,7 +62,6 @@ public record Preset(String id, String nameKey, String tooltipKey, Map<SettingKe
             s -> {
                 s.put(ConfigSchema.RENDER_FRAME_CAP, 0);
                 s.put(ConfigSchema.RENDER_VSYNC, "auto");
-                s.put(ConfigSchema.RENDER_SMOOTH_PACING, true);
                 s.put(ConfigSchema.RENDER_VIDEO_OVERRIDES, false);
                 s.put(ConfigSchema.CULL_ENTITY, true);
                 s.put(ConfigSchema.CULL_ENTITY_MODE, "frustum_occlusion");
@@ -92,7 +90,6 @@ public record Preset(String id, String nameKey, String tooltipKey, Map<SettingKe
             s -> {
                 s.put(ConfigSchema.RENDER_FRAME_CAP, 0);
                 s.put(ConfigSchema.RENDER_VSYNC, "auto");
-                s.put(ConfigSchema.RENDER_SMOOTH_PACING, true);
                 s.put(ConfigSchema.RENDER_VIDEO_OVERRIDES, false);
                 s.put(ConfigSchema.CULL_ENTITY, true);
                 s.put(ConfigSchema.CULL_ENTITY_MODE, "frustum_occlusion");

@@ -148,25 +148,70 @@ public final class VanillaOptions {
     }
 
     private static volatile int requestedCap = 0;
+    private static volatile int vanillaCap = -1;
 
-    
     /**
-     * Nanos per frame the user asked for, or 0 for uncapped. Used by soft pacing, which
-     * is opt-in precisely because a timed wait is a different trade to vsync.
+     * The ceiling the user asked for, whether or not the game can honour the number.
+     * Kept so the idle throttle can put the previous value back.
      */
-    public static long frameCapNanos() {
-        int cap = requestedCap;
-        return cap <= 0 ? 0L : Math.max(1L, 1_000_000_000L / cap);
-    }
-
-    /** Records the requested ceiling without touching vsync (an explicit vsync wins). */
-    public static void noteRequestedFrameCap(int cap) {
-        requestedCap = Math.max(0, Math.min(1000, cap));
-    }
-
-    /** The ceiling the user asked for, whether or not the game can honour the number. */
     public static int requestedFrameCap() {
         return requestedCap;
+    }
+
+    /**
+     * Puts a frame ceiling on the game through vanilla's own limiter, and never through
+     * vsync or a sleep of ours.
+     *
+     * <p>{@code FramerateLimitTracker} is the object the render loop parks against, so a
+     * value written here behaves exactly like the video-setting cap: it is honoured by
+     * whatever pacing the game is already doing, and it works under a GL translator that
+     * treats the swap interval in its own way. Requesting 0 hands the limit back to the
+     * value the game had before we first touched it, which is the only honest way to say
+     * "uncapped" - the game may have its own reasons to limit, including ones the user
+     * set and ones the operating system imposes.
+     *
+     * @return the limit in force afterwards, or -1 when it could not be written
+     */
+    public static void noteRequestedFrameCap(Minecraft client, int cap) {
+        requestedCap = Math.max(0, Math.min(1000, cap));
+        if (client == null) {
+            return;
+        }
+        try {
+            var tracker = client.getFramerateLimitTracker();
+            if (tracker == null) {
+                return;
+            }
+            if (vanillaCap < 0) {
+                vanillaCap = Math.max(0, tracker.getFramerateLimit());
+            }
+            int want = requestedCap > 0 ? requestedCap : vanillaCap;
+            if (tracker.getFramerateLimit() != want) {
+                tracker.setFramerateLimit(want);
+            }
+        } catch (RuntimeException | LinkageError e) {
+            // A missing tracker means this build paces frames some other way. Refusing to
+            // write a cap is right; inventing our own limiter is what made frames worse.
+            BlockBoost.logWarn("frame cap not applied: the game exposes no FramerateLimitTracker", e);
+        }
+    }
+
+    /**
+     * Why the game is limiting itself right now. Reported verbatim from vanilla, because
+     * "the phone decided to draw at 30" is otherwise invisible and gets blamed on the mod.
+     */
+    public static String throttleReport(Minecraft client) {
+        try {
+            var tracker = client == null ? null : client.getFramerateLimitTracker();
+            if (tracker == null) {
+                return "not available on this build";
+            }
+            return tracker.getFramerateLimit() + " fps limit, throttle reason "
+                    + tracker.getThrottleReason()
+                    + (tracker.isHeavilyThrottled() ? " (heavy)" : "");
+        } catch (RuntimeException | LinkageError e) {
+            return "not available on this build";
+        }
     }
 
     public static void vsync(Minecraft client, boolean on) {
