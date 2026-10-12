@@ -99,7 +99,30 @@ public final class BlockBoostClientGameTest implements FabricClientGameTest {
             measureHotPath(context);
         }
 
-        // 7) The report path exists and writes into the game directory only.
+        // 7) The settings screen is hand-built layout code: it compiles and still shows
+        //    nothing, or throws on the first tap. Open it on the live client and walk every
+        //    section, which is the only way to know the widgets actually get laid out.
+        int laidOut = 0;
+        try {
+            dev.blockboost.client.ui.BlockBoostSettingsScreen screen =
+                    (dev.blockboost.client.ui.BlockBoostSettingsScreen)
+                            dev.blockboost.client.ui.BlockBoostSettingsScreen.create(null);
+            client.setScreen(screen);
+            assertTrue(client.screen == screen, "setScreen did not take the mod's screen");
+            for (int i = 0; i < 10; i++) {
+                screen.nextTab();
+                laidOut += screen.laidOutRows();
+                assertTrue(client.screen == screen, "the screen closed itself moving to tab " + i);
+            }
+            client.setScreen(null);
+        } catch (AssertionError | Exception e) {
+            client.setScreen(null);
+            throw new AssertionError("settings screen unusable: " + e, e);
+        }
+        assertTrue(laidOut > 0, "the settings screen laid out no rows on any tab");
+        screenNote = "tabs walked, rows=" + laidOut;
+
+        // 8) The report path exists and writes into the game directory only.
         List<String> report = BlockBoostRuntime.get().startupNotes();
         assertTrue(report != null, "startup notes must not be null");
 
@@ -133,6 +156,7 @@ public final class BlockBoostClientGameTest implements FabricClientGameTest {
             }
             sb.append("hud_setting=").append(runtime.settings().enumValue(ConfigSchema.DIAG_HUD)).append('\n');
             sb.append("hot_path=").append(hotPathNote).append('\n');
+            sb.append("settings_screen=").append(screenNote).append('\n');
             sb.append("occlusion_probe=").append(dev.blockboost.client.BlockBoostClient.services() == null
                     ? "no services" : dev.blockboost.client.BlockBoostClient.services().probeDescription())
                     .append('\n');
@@ -200,6 +224,7 @@ public final class BlockBoostClientGameTest implements FabricClientGameTest {
     }
 
     private static String hotPathNote = "not measured";
+    private static String screenNote = "not measured";
 
     public static String hotPathNote() {
         return hotPathNote;

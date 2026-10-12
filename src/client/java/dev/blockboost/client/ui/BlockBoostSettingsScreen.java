@@ -253,6 +253,26 @@ public final class BlockBoostSettingsScreen extends Screen {
         refresh();
     }
 
+    /**
+     * Moves to the next section. Public because the game test walks every section on a
+     * real client: hand-written layout is exactly the kind of code that compiles and then
+     * shows nothing.
+     */
+    public void nextTab() {
+        selectTab(tab.ordinal() + 1);
+    }
+
+    /** Controls laid out right now; zero everywhere would mean a broken screen. */
+    public int laidOutRows() {
+        int n = 0;
+        for (Row row : rows) {
+            if (row.body != null && row.body.visible) {
+                n++;
+            }
+        }
+        return n;
+    }
+
     // ── relayout ────────────────────────────────────────────────────────────
     /** Recomputes labels, geometry and the visible key list. Called on any change. */
     private void refresh() {
