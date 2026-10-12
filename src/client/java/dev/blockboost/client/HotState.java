@@ -71,7 +71,6 @@ public final class HotState {
     public static volatile boolean framePacing;
     public static volatile boolean idleThrottle;
     public static volatile int idleFrameCap;
-    public static volatile int frameCap;
     public static volatile boolean videoOverrides;
 
     // ── diagnostics ───────────────────────────────────────────────────────────
@@ -139,7 +138,6 @@ public final class HotState {
         framePacing = registry.isActive(FeatureId.FRAME_PACING) && s.bool(ConfigSchema.RENDER_IDLE_THROTTLE);
         idleThrottle = s.bool(ConfigSchema.RENDER_IDLE_THROTTLE);
         idleFrameCap = s.integer(ConfigSchema.RENDER_IDLE_FRAME_CAP);
-        frameCap = s.integer(ConfigSchema.RENDER_FRAME_CAP);
         videoOverrides = registry.isActive(FeatureId.VIDEO_OVERRIDES) && s.bool(ConfigSchema.RENDER_VIDEO_OVERRIDES);
 
         hud = registry.isActive(FeatureId.HUD) && !s.is(ConfigSchema.DIAG_HUD, "off");

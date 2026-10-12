@@ -1,0 +1,13 @@
+# Build output. The published jar lives on the GitHub release, never in the branch:
+# a binary in the tree moves the branch under active work and grows forever.
+build/
+out/
+.gradle/
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Local run directories created by Loom's run tasks
+run/
+.idea/
+*.iml
+.vscode/

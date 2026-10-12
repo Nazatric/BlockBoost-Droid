@@ -212,7 +212,7 @@ jobs:
   # download are exactly the bytes CI checked.
   # ──────────────────────────────────────────────────────────────────────────
   publish:
-    name: Publish verified jar (commit + release asset)
+    name: Publish verified jar (release asset)
     needs: [build]
     if: github.event_name == 'push' && github.ref != 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
@@ -254,19 +254,10 @@ jobs:
           unzip -l "$NAME" | tail -3
           sha256sum "$NAME" | tee /tmp/jar-sha256.txt
 
-      - name: Commit the jar at the repository root
-        run: |
-          set -euo pipefail
-          git config user.name "blockboost-ci"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f "$JAR"
-          if git diff --cached --quiet; then
-            echo "jar already published unchanged; nothing to commit"
-          else
-            git commit -q -m "release: $JAR ($(date -u +%Y-%m-%d)) [skip ci]" \
-              -m "Produced by CI run ${{ github.run_id }} from commit ${GITHUB_SHA:0:9}; sha256 $(cut -d' ' -f1 /tmp/jar-sha256.txt)."
-            git push -q origin "HEAD:${GITHUB_REF_NAME}"
-          fi
+      # Deliberately no "commit the jar into the branch" step. A build artifact pushed onto
+      # the working branch by CI moves the branch under whoever is working on it (it did, and
+      # every later push needed a merge), it duplicates the release asset, and it grows the
+      # repository on every run. The release asset below is the artifact; the branch is source.
 
       - name: Create or update the release
         env:
