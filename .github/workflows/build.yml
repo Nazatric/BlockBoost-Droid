@@ -175,12 +175,13 @@ jobs:
             # The numbers we actually measured, not a log tail: the interesting lines are
             # written by the test itself and would otherwise scroll out of a 200-line tail.
             echo "### BlockBoost game test: what it measured"
-            find . -path "*blockboost*" -name "*.txt" -print 2>/dev/null | head -20
-            find . -path "*blockboost/bench*" -name "*.txt" -exec cat {} \; 2>/dev/null \
+            echo "(run dirs: $(ls -d build/run* run 2>/dev/null | tr '\n' ' '))"
+            find . -name "latest-summary.txt" -print -exec cat {} \; 2>/dev/null \
               || echo "(no bench summary written)"
             echo
-            echo "#### mod log lines (grep, not tail)"
-            grep -a "\[BlockBoost" /tmp/gametest.log | grep -av "loading\|registered\|Mixin\|feature " | head -60
+            echo "#### measurement lines (grep, not tail)"
+            grep -a "BlockBoost/test\|BlockBoost gametest\|settings_screen=\|hot_path=\|occlusion_probe=\|Auto profile" /tmp/gametest.log \
+              | head -40
             echo
             echo "#### failures / exceptions"
             grep -a -i "assertionerror\|exception in thread\|FAILED\|quarantin" /tmp/gametest.log | head -30

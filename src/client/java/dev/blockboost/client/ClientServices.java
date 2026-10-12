@@ -234,10 +234,11 @@ public final class ClientServices implements FeatureEnvironment, AutoCloseable {
         int changed = settings.applyAll(rec.patch());
         BlockBoostRuntime.get().requestSave();
         for (String line : rec.describe()) {
-            BlockBoost.logInfo("[BlockBoost] " + line);
+            // logInfo already puts [BlockBoost] in front of the message.
+            BlockBoost.logInfo(line);
             diagnostics.note(line);
         }
-        BlockBoost.logInfo("[BlockBoost] auto profile wrote " + changed + " setting(s)");
+        BlockBoost.logInfo("auto profile wrote " + changed + " setting(s)");
         HotState.refresh();
         return rec.describe();
     }
