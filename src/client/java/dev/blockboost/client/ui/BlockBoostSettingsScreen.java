@@ -175,7 +175,7 @@ public final class BlockBoostSettingsScreen extends Screen {
 
         for (int i = 0; i < MAX_ROWS; i++) {
             final int index = i;
-            rowBody[i] = Button.builder(Component.literal(""), b -> openRow(index)).bounds(0, 0, 10, ROW_BODY).build();
+            rowBody[i] = Button.builder(Component.literal(""), b -> tapRow(index)).bounds(0, 0, 10, ROW_BODY).build();
             rowMinus[i] = Button.builder(Component.literal("-"), b -> adjust(index, -1))
                     .bounds(0, 0, 22, ROW_BODY).build();
             rowPlus[i] = Button.builder(Component.literal("+"), b -> adjust(index, 1))
@@ -715,6 +715,26 @@ public final class BlockBoostSettingsScreen extends Screen {
         return source >= 0 && source < visible.size() ? visible.get(source) : null;
     }
 
+    /**
+     * What the wide part of a row does when you press it. A boolean and an enum change on the
+     * spot - that is what a row is for on a touchscreen, and it is what vanilla's own buttons
+     * do - while a number opens its explanation instead, because a mis-tap on a slider value
+     * has no obvious undo in the middle of a list.
+     */
+    private void tapRow(int row) {
+        SettingKey key = keyAt(row);
+        if (key == null) {
+            return;
+        }
+        if (key.kind() == SettingKey.Kind.BOOLEAN) {
+            adjust(row, 1);
+        } else if (key.kind() == SettingKey.Kind.ENUM) {
+            adjust(row, 1);
+        } else {
+            openRow(row);
+        }
+    }
+
     private void adjust(int row, int direction) {
         SettingKey key = keyAt(row);
         if (key == null) {
@@ -727,9 +747,12 @@ public final class BlockBoostSettingsScreen extends Screen {
             stepEnum(settings, key, direction);
         } else {
             double span = key.max() - key.min();
-            double step = Math.max(key.kind() == SettingKey.Kind.INTEGER ? 1 : 0.01D,
-                    Math.abs(span) * (direction > 0 ? 0.1D : -0.1D));
-            double next = number(settings, key) + step;
+            // The magnitude is what gets a floor of 1 (or 0.01); the sign comes from the
+            // direction. Taking Math.max of a signed step instead silently turned "-" into
+            // "+0.01", which is the kind of bug that makes a list of controls feel haunted.
+            double magnitude = Math.max(key.kind() == SettingKey.Kind.INTEGER ? 1.0D : 0.01D,
+                    Math.abs(span) * 0.1D);
+            double next = number(settings, key) + (direction > 0 ? magnitude : -magnitude);
             if (key.kind() == SettingKey.Kind.INTEGER) {
                 settings.set(key, (int) Math.round(Math.max(key.min(), Math.min(key.max(), next))));
             } else {
