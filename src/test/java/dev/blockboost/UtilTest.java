@@ -98,7 +98,9 @@ public class UtilTest {
         pool.submit(after::countDown);
         assertTrue(after.await(5, TimeUnit.SECONDS), "a throwing task must not take the pool down");
         pools.close();
-        assertEquals(0, pool.activeThreads(), "close must retire the worker threads");
+        // Not activeThreads(): that is a ThreadPoolExecutor estimate and it lags the real
+        // exit of a worker, which made this assertion fire on a loaded CI runner only.
+        assertTrue(pool.awaitTermination(3_000), "close must retire the worker threads");
     }
 
     @Test

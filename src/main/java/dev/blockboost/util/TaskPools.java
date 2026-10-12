@@ -149,6 +149,20 @@ public final class TaskPools implements AutoCloseable {
             executor.shutdownNow();
         }
 
+        /**
+         * Waits until every worker of this pool has actually left. {@code getActiveCount()}
+         * is an estimate, so it is the wrong thing to assert on right after a shutdown - this
+         * is the answer the caller wants and it is exact.
+         */
+        public boolean awaitTermination(long millis) {
+            try {
+                return executor.awaitTermination(millis, java.util.concurrent.TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+        }
+
         public String describe() {
             return name + " threads=" + executor.getCorePoolSize() + " queue=" + queueLength() + "/"
                     + maxQueue + " done=" + completed.get() + " dropped=" + dropped.get();
