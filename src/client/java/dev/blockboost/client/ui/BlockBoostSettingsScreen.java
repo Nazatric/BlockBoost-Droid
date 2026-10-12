@@ -265,8 +265,8 @@ public final class BlockBoostSettingsScreen extends Screen {
     /** Controls laid out right now; zero everywhere would mean a broken screen. */
     public int laidOutRows() {
         int n = 0;
-        for (Row row : rows) {
-            if (row.body != null && row.body.visible) {
+        for (int i = 0; i < MAX_ROWS; i++) {
+            if (rowBody[i] != null && rowBody[i].visible) {
                 n++;
             }
         }
