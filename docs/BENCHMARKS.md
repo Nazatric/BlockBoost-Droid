@@ -6,6 +6,26 @@ Minecraft modding: it silently encodes one GPU driver build, one thermal state, 
 one render distance, one heap size, one background app. This project ships the harness so
 that the numbers people quote are *measured, dated, and complete enough to argue with*.
 
+## What CI records, and what it is worth
+
+Every push writes `latest-summary.txt` into the client game test's own run directory, and the CI
+comment prints it. From the run that introduced the assertion suite actually running (2026-10-12,
+commit `3821443`), on GitHub's `ubuntu-24.04` runner with a software framebuffer:
+
+| Field | Value | Reading |
+| --- | --- | --- |
+| `hot_path` | `culling: 2000 decisions in 3521 us (1 us each, 1 hidden), memo 4/27` | ~1.8 µs per visibility decision under the current budgets. The assertion is that 2000 of them fit in 8 ms; they fit in 3.5 ms. |
+| `settings_screen` | `tabs walked, rows=21` | every section laid out controls on a live client |
+| `features_registered` / `feature_failures` | `9` / `0` | nothing threw during initialization |
+| `renderer_profile` / `device_class` | `DESKTOP_GL` / `LOW` | the runner reports 4 cores, so the conservative class is correct *for the runner* |
+| `occlusion_probe` | `BlockState#canOcclude()` | the reflective probe resolved to a real vanilla method |
+
+**These are not device numbers.** A software framebuffer has no GPU queue, no thermal limit and no
+driver to translate, so the microsecond figure says "our CPU-side cost is not the problem here", not
+"expect this on a phone". They exist because the *shape* of the number is what regressed once before:
+if a future change brings back an unbounded per-frame path, the decision cost moves by an order of
+magnitude and the assertion fails, which is the point.
+
 ## The harness in the jar
 
 Two JVM properties, no commands and no keybinds needed (a launcher's console or

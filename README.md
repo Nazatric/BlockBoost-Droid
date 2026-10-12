@@ -129,7 +129,7 @@ Real numbers on real Android hardware: **not measured, and not claimed.** This r
 phone, and a software framebuffer in CI is not a proxy for a thermal-limited SoC. Anything on this
 point would be fabricated, so instead:
 
-* **What CI does measure**, on every push, inside a live client. `runGameTestClient` runs the mod's
+* **What CI does measure**, on every push, inside a live client. `runClientGameTest` runs the mod's
   own assertions on a real, running game: the hot path — 2000 visibility decisions inside one frame
   budget, asserted under 8 ms, with the per-decision microseconds and the occlusion probe state
   logged; a walk of every section of the settings screen requiring that rows actually get laid out;
@@ -183,7 +183,8 @@ video options. That is also why the mod survives a renderer swap it has not seen
 
 ```bash
 ./gradlew build                        # compile + unit tests, jar in build/libs/
-./gradlew runProductionClientGameTest  # the live-client test, headless under xvfb
+./gradlew runClientGameTest            # the assertion suite, on a live client under xvfb
+./gradlew runProductionClientGameTest  # the shipped jar booting in a real client
 ./gradlew dumpMinecraftApi             # verify an API against the real 26.1.2 jar
 ```
 

@@ -73,7 +73,7 @@ us on real hardware. Verified so far, by CI on every push:
   cache and queue behaviour, percentile monotonicity, raycaster bounds and fail-open
   direction, preset validity, and packaging metadata (license, no network APIs, no other
   project's imports, every declared mixin class present)
-* **a client game test that boots the actual game** (`runGameTestClient`): the mod
+* **a client game test that boots the actual game** (`runClientGameTest`): the mod
   initializes, mixins apply, the subsystems report `ACTIVE` with zero feature failures, the
   visibility hot path is timed over 2000 decisions inside one frame budget, every section of
   the settings screen is opened and required to lay out controls, and the config round-trips
