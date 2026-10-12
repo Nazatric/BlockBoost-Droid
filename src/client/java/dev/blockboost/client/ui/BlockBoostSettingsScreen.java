@@ -837,10 +837,7 @@ public final class BlockBoostSettingsScreen extends Screen {
     }
 
     private void confirmResetTab() {
-        List<SettingKey> keys = new ArrayList<>(visible);
-        if (keys.isEmpty()) {
-            keys = keysFor(tab);
-        }
+        final List<SettingKey> keys = visible.isEmpty() ? keysFor(tab) : new ArrayList<>(visible);
         StringBuilder sb = new StringBuilder("Reset " + keys.size() + " settings in " + tab.title
                 + " to their defaults?\n\n");
         int shown = 0;
