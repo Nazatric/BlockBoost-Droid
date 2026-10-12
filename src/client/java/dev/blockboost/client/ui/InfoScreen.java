@@ -24,6 +24,15 @@ public final class InfoScreen extends Screen {
     private final Consumer<Boolean> onAnswer;
     private final Screen back;
 
+    /** One-action dialog: the text is the point, the button only has to get out of the way. */
+    public InfoScreen(Screen back, Component title, Component body, String okLabel, Runnable onOk) {
+        this(back, title, body, okLabel, null, answered -> {
+            if (answered) {
+                onOk.run();
+            }
+        });
+    }
+
     public InfoScreen(Screen back, Component title, Component body, String confirmLabel, String cancelLabel,
                       Consumer<Boolean> onAnswer) {
         super(title);
@@ -40,9 +49,12 @@ public final class InfoScreen extends Screen {
         int buttonWidth = Math.min(150, (this.width - margin * 3) / 2);
         int y = this.height - margin - 20;
         this.addRenderableWidget(Button.builder(Component.literal(confirmLabel), b -> answer(true))
-                .bounds(margin, y, buttonWidth, 20).build());
-        this.addRenderableWidget(Button.builder(Component.literal(cancelLabel), b -> answer(false))
-                .bounds(margin * 2 + buttonWidth, y, buttonWidth, 20).build());
+                .bounds(margin, y, cancelLabel == null ? Math.min(this.width - margin * 2, buttonWidth * 2 + margin)
+                        : buttonWidth, 20).build());
+        if (cancelLabel != null) {
+            this.addRenderableWidget(Button.builder(Component.literal(cancelLabel), b -> answer(false))
+                    .bounds(margin * 2 + buttonWidth, y, buttonWidth, 20).build());
+        }
         this.addRenderableWidget(Button.builder(Component.literal("< back"), b -> answer(false))
                 .bounds(this.width - margin - 70, y, 70, 20).build());
 

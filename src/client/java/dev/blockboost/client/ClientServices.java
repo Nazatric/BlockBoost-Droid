@@ -188,6 +188,24 @@ public final class ClientServices implements FeatureEnvironment, AutoCloseable {
      * a cap actually helps on hardware where vsync is unreliable.
      */
     private volatile boolean autoProfileConsidered;
+    private volatile List<String> lastAutoLines = List.of();
+
+    /** What the automatic profile says about this device right now, without writing it. */
+    public List<String> previewRecommendedProfile() {
+        dev.blockboost.device.DeviceCapabilities d = device;
+        if (d == null) {
+            return List.of("device capabilities unavailable");
+        }
+        dev.blockboost.device.GpuInfo gpu = d.gpu();
+        return dev.blockboost.device.DeviceProfileAdvisor.recommend(d.cores(), d.maxHeapBytes(),
+                d.androidEnvironment(), d.mobileArch(),
+                gpu == null ? null : gpu.vendor(), gpu == null ? null : gpu.renderer(),
+                d.rendererProfile() != null && d.rendererProfile().translating()).describe();
+    }
+
+    public List<String> lastAutoProfileLines() {
+        return lastAutoLines.isEmpty() ? previewRecommendedProfile() : lastAutoLines;
+    }
 
     /**
      * Chooses a starting configuration from what the runtime actually reported, on a fresh
@@ -222,6 +240,7 @@ public final class ClientServices implements FeatureEnvironment, AutoCloseable {
                         d.androidEnvironment(), d.mobileArch(),
                         gpu == null ? null : gpu.vendor(), gpu == null ? null : gpu.renderer(),
                         d.rendererProfile() != null && d.rendererProfile().translating());
+        lastAutoLines = rec.describe();
         int changed = settings.applyAll(rec.patch());
         BlockBoostRuntime.get().requestSave();
         for (String line : rec.describe()) {
