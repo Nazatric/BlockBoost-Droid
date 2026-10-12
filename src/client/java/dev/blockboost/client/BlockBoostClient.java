@@ -100,6 +100,13 @@ public final class BlockBoostClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         BlockBoostRuntime runtime = BlockBoostRuntime.get();
+        // Tell the runtime which side this is. start() is idempotent and OR-s the flag, so
+        // this records "client" without re-initializing anything the common entrypoint built.
+        // Without it BlockBoostRuntime.isClientSide() answered false in a running client -
+        // harmless while nothing read it, and exactly the kind of flag a diagnostic or a
+        // guarded mixin will trust later, so it is fixed where it starts rather than patched
+        // at each reader. The client game test caught it: that assertion had never executed.
+        runtime.start(true);
         Settings settings = runtime.settings();
         services = new ClientServices(settings, runtime.device(), runtime.compatibility());
         context = new FeatureRuntimeContext(settings, runtime.device(), runtime.compatibility(), services.pools(),
