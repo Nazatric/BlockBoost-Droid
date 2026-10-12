@@ -208,7 +208,8 @@ public final class AsyncVisibilityEngine implements AutoCloseable {
         frameProbes = probes;
         frameSubmissions = fieldModeHint() ? 48 : 0;
         frameStartNanos = System.nanoTime();
-        frameNanosBudget = Math.max(250_000L, settings.integer(ConfigSchema.CULL_ENTITY_BUDGET_MS) * 10_000L);
+        int budgetMs = settings.integer(ConfigSchema.CULL_ENTITY_BUDGET_MS);
+        frameNanosBudget = budgetMs <= 0 ? Long.MAX_VALUE / 4 : budgetMs * 1_000_000L;
         maxDistance = settings.integer(ConfigSchema.CULL_ENTITY_MAX_DISTANCE);
         fieldMode = settings.bool(ConfigSchema.CULL_ENTITY_ASYNC);
         int refreshTicks = Math.max(1, settings.integer(ConfigSchema.CULL_ENTITY_REFRESH_TICKS));
@@ -267,7 +268,7 @@ public final class AsyncVisibilityEngine implements AutoCloseable {
      * Client thread only: this is the only place the async path reads live blocks.
      */
     public void updateField(LevelProbe probe) {
-        if (!frameMode && !fieldModeHint()) {
+        if (!fieldMode && !fieldModeHint()) {
             return;
         }
         if (probe == null) {

@@ -121,8 +121,9 @@ public final class BlockBoostSettingsScreen extends Screen {
     private Button doneButton;
     private EditBox search;
 
-    private int tab;
+    private Tab tab = Tab.OVERVIEW;
     private int page;
+    private final Screen parent;
     private String filter = "";
     private boolean restartPending;
 
@@ -143,8 +144,19 @@ public final class BlockBoostSettingsScreen extends Screen {
     private int rowsWidth;
     private int rowStride;
 
-    public BlockBoostSettingsScreen() {
+    private BlockBoostSettingsScreen(Screen parent) {
         super(Component.literal("BlockBoost"));
+        this.parent = parent;
+    }
+
+    /**
+     * Entry point for Mod Menu (which hands back the screen to return to) and for the key
+     * bind. The key-bind path passes null because reading the game's current screen field
+     * is not something this project has verified against 26.1.2, and closing to the game is
+     * the right answer from a hot key anyway.
+     */
+    public static Screen create(Screen parent) {
+        return new BlockBoostSettingsScreen(parent);
     }
 
     // ── construction ────────────────────────────────────────────────────────
@@ -236,7 +248,7 @@ public final class BlockBoostSettingsScreen extends Screen {
     }
 
     private void selectTab(int index) {
-        this.tab = Math.floorMod(index, TABS.length);
+        this.tab = TABS[Math.floorMod(index, TABS.length)];
         this.page = 0;
         refresh();
     }
@@ -245,7 +257,7 @@ public final class BlockBoostSettingsScreen extends Screen {
     /** Recomputes labels, geometry and the visible key list. Called on any change. */
     private void refresh() {
         Settings settings = runtime.settings();
-        visible = keysFor(TABS[tab]);
+        visible = keysFor(tab);
         if (page >= pages()) {
             page = Math.max(0, pages() - 1);
         }
@@ -259,10 +271,10 @@ public final class BlockBoostSettingsScreen extends Screen {
         for (int i = 0; i < TABS.length; i++) {
             tabButtons[i].setX(x);
             tabButtons[i].setY(margin + 22);
-            tabButtons[i].setWidth(i == tab ? tabWidth + (width - tabWidth * TABS.length - (TABS.length - 1) * 2)
+            tabButtons[i].setWidth(TABS[i] == tab ? tabWidth + (width - tabWidth * TABS.length - (TABS.length - 1) * 2)
                     : tabWidth);
-            tabButtons[i].setMessage(Component.literal((i == tab ? "> " : "") + TABS[i].title));
-            tabButtons[i].active = i != tab;
+            tabButtons[i].setMessage(Component.literal((TABS[i] == tab ? "> " : "") + TABS[i].title));
+            tabButtons[i].active = TABS[i] != tab;
             x += tabButtons[i].getWidth() + 2;
         }
 
@@ -424,7 +436,7 @@ public final class BlockBoostSettingsScreen extends Screen {
         graphics.text(this.font, headerLines[1], margin + 3, margin + 11, COLOR_DIM, false);
 
         int tabsBottom = margin + 22 + ROW_BODY + 2;
-        graphics.text(this.font, TABS[tab].title + " - " + TABS[tab].blurb, margin + 3, tabsBottom, COLOR_TEXT, false);
+        graphics.text(this.font, tab.title + " - " + tab.blurb, margin + 3, tabsBottom, COLOR_TEXT, false);
 
         if (isInfoTab()) {
             List<String> lines = tab == Tab.OVERVIEW ? overviewLines : smartLines;
@@ -827,9 +839,9 @@ public final class BlockBoostSettingsScreen extends Screen {
     private void confirmResetTab() {
         List<SettingKey> keys = new ArrayList<>(visible);
         if (keys.isEmpty()) {
-            keys = keysFor(TABS[tab]);
+            keys = keysFor(tab);
         }
-        StringBuilder sb = new StringBuilder("Reset " + keys.size() + " settings in " + TABS[tab].title
+        StringBuilder sb = new StringBuilder("Reset " + keys.size() + " settings in " + tab.title
                 + " to their defaults?\n\n");
         int shown = 0;
         for (SettingKey key : keys) {

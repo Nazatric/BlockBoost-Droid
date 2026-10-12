@@ -101,6 +101,12 @@ public final class ConfigSchema {
     public static final SettingKey CULL_ENTITY_REFRESH_TICKS = SettingKey.intRange(
             "culling.entity_refresh_ticks", 5, 1, 100, CULLING, SAFE, false,
             "How often a cached visibility result may be re-tested while the camera is standing still.");
+    public static final SettingKey CULL_ENTITY_BUDGET_MS = SettingKey.intRange(
+            "culling.entity_budget_ms", 2, 0, 8, CULLING, SAFE, false,
+            "Milliseconds one frame may spend deciding visibility with on-thread tests. 0 removes the time "
+            + "cap and leaves only the per-frame probe budget. This is the setting that keeps a dense scene "
+            + "from costing frames: raising it culls more over a few frames, lowering it spends less time "
+            + "saving work.");
     public static final SettingKey CULL_ENTITY_KEEP_NAMED = SettingKey.bool(
             "culling.entity_keep_named", true, CULLING, SAFE, false,
             "Never hides named/boss/vehicle entities. Interaction and nametags always keep working.");

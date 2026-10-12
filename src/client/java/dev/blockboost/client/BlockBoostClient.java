@@ -234,7 +234,7 @@ public final class BlockBoostClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             try {
                 if (settingsKey != null && settingsKey.consumeClick()) {
-                    client.setScreen(new dev.blockboost.client.ui.BlockBoostSettingsScreen(null, runtime, services));
+                    client.setScreen(dev.blockboost.client.ui.BlockBoostSettingsScreen.create(null));
                 }
                 while (hudKey != null && hudKey.consumeClick()) {
                     toggleHud();
