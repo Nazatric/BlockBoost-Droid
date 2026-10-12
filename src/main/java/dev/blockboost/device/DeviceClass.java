@@ -37,10 +37,12 @@ public enum DeviceClass {
     }
 
     /**
-     * Derives a tier from what the JVM really reports. Deliberately pessimistic:
-     * a phone that reports eight cores is not automatically a high-end device,
-     * because half of them are efficiency cores and thermal headroom is unknown.
+     * @deprecated superseded by {@link DeviceProfileAdvisor#classify(int, long, boolean)},
+     *     which is what the automatic profile applies. Kept as a one-line delegate so nothing
+     *     that still calls it gets a second, different opinion: the old scoring rule here and
+     *     the advisor's thresholds disagreed on the same machine.
      */
+    @Deprecated(forRemoval = true)
     public static DeviceClass infer(int cores, long maxHeapBytes, boolean mobileArch) {
         long mb = maxHeapBytes / (1024 * 1024);
         if (cores <= 0) {

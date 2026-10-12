@@ -31,9 +31,11 @@ how you get a black screen in someone else's mod.
 
 The automatic profile is a pure function of the numbers the JVM will actually answer with
 (cores, heap ceiling, arch, Android hints, GL vendor/renderer, whether the GL path is a
-translator), evaluated once on the first frame and cached for the session. `LOW` requires a small
-heap **and** few cores; `HIGH` requires real headroom **and** a non-mobile arch; unknown numbers
-mean `UNKNOWN`, which means one worker and no asynchronous culling. A flagship GPU name in a 2 GB
+translator), evaluated once on the first frame and cached for the session. `LOW` is chosen for 4 cores or fewer
+or a heap under about 1.3 GB (and again at ≤ 6 cores under 2 GB); `HIGH` requires ≥ 8 cores,
+≥ 5 GB **and** a non-mobile arch; unreadable numbers mean `UNKNOWN`, which means one worker and
+no asynchronous culling. There is one classifier in the code — the one the profile applies — and
+the status page reports its answer, never a second opinion. A flagship GPU name in a 2 GB
 heap is still `LOW` — the GPU string only makes the profile *more* conservative, never less, and
 the patch it writes can never contain a frame cap, a vsync state, or any `render.vanilla_*` video
 option (`DeviceProfileAdvisorTest` asserts that over the whole grid, not on one device).

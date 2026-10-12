@@ -103,8 +103,13 @@ public final class DeviceCapabilities {
         DeviceClass cls;
         String id = settings.string(ConfigSchema.ANDROID_DEVICE_CLASS);
         if ("auto".equals(id)) {
-            cls = DeviceClass.infer(cores, maxHeapBytes, mobileArch || androidEnv);
-            profileSource = "inferred";
+            // One classifier, the one the automatic profile uses. There used to be a second,
+            // scoring-based one here, and on the CI runner they disagreed - the profile applied
+            // LOW while the status page reported MID, which is exactly the sort of confident
+            // wrong number a diagnostics screen should never produce.
+            cls = DeviceProfileAdvisor.classify(cores, maxHeapBytes / (1024 * 1024),
+                    mobileArch || androidEnv);
+            profileSource = "inferred from cores and heap ceiling";
         } else {
             cls = DeviceClass.fromId(id);
             profileSource = "manual";
