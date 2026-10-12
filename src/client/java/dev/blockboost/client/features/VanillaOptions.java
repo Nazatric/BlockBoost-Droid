@@ -192,7 +192,8 @@ public final class VanillaOptions {
         } catch (RuntimeException | LinkageError e) {
             // A missing tracker means this build paces frames some other way. Refusing to
             // write a cap is right; inventing our own limiter is what made frames worse.
-            BlockBoost.logWarn("frame cap not applied: the game exposes no FramerateLimitTracker", e);
+            BlockBoost.LOG.warn("[BlockBoost] frame cap not applied: this build exposes no"
+                    + " FramerateLimitTracker, so no ceiling was written", e);
         }
     }
 
