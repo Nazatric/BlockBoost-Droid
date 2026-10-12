@@ -1,5 +1,6 @@
 package dev.blockboost.client;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -186,6 +187,52 @@ public final class ClientServices implements FeatureEnvironment, AutoCloseable {
      * work nobody asked for while the phone is thermally limited, which is the only way
      * a cap actually helps on hardware where vsync is unreliable.
      */
+    private volatile boolean autoProfileConsidered;
+
+    /**
+     * Chooses a starting configuration from what the runtime actually reported, on a fresh
+     * install only - and never again unless the user asks for it from the settings screen.
+     *
+     * <p>Why on the first frame: the renderer identity (translated GL or not) is only
+     * knowable once a context exists, and a recommendation built without it would be a
+     * guess about the one thing Android varies most on.
+     *
+     * @param force re-apply even if the config was not created by this launch
+     * @return the lines describing what was chosen, empty when nothing was applied
+     */
+    public List<String> applyRecommendedProfile(boolean force) {
+        if (!force) {
+            if (autoProfileConsidered) {
+                return List.of();
+            }
+            autoProfileConsidered = true;
+            if (!settings.isFreshInstall()) {
+                return List.of();
+            }
+        }
+        if (!"auto".equals(settings.string(ConfigSchema.ANDROID_DEVICE_CLASS))) {
+            // The user picked a class by hand; that outranks any heuristic of ours.
+            diagnostics.note("auto profile skipped: android.device_class is set manually");
+            return List.of();
+        }
+        dev.blockboost.device.DeviceCapabilities d = device;
+        dev.blockboost.device.GpuInfo gpu = d.gpu();
+        dev.blockboost.device.DeviceProfileAdvisor.Recommendation rec =
+                dev.blockboost.device.DeviceProfileAdvisor.recommend(d.cores(), d.maxHeapBytes(),
+                        d.androidEnvironment(), d.mobileArch(),
+                        gpu == null ? null : gpu.vendor(), gpu == null ? null : gpu.renderer(),
+                        d.rendererProfile() != null && d.rendererProfile().translating());
+        int changed = settings.applyAll(rec.patch());
+        BlockBoostRuntime.get().requestSave();
+        for (String line : rec.describe()) {
+            BlockBoost.logInfo("[BlockBoost] " + line);
+            diagnostics.note(line);
+        }
+        BlockBoost.logInfo("[BlockBoost] auto profile wrote " + changed + " setting(s)");
+        HotState.refresh();
+        return rec.describe();
+    }
+
     private void pace(long frameEndNanos) {
         if (!HotState.softPacing) {
             return;
@@ -231,6 +278,10 @@ public final class ClientServices implements FeatureEnvironment, AutoCloseable {
             } catch (Throwable t) {
                 BlockBoost.LOG.warn("[BlockBoost] renderer probe failed; staying conservative", t);
             }
+            // The GPU strings only exist after the first frame, and the auto profile wants
+            // them (they decide whether this is a translated GL stack), so the first useful
+            // moment to choose defaults is exactly here - once, outside any loop.
+            applyRecommendedProfile(false);
             BlockBoostRuntime.get().registry().refresh();
         }
     }

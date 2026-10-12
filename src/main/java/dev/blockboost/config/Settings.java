@@ -168,6 +168,21 @@ public final class Settings {
         unknownRoot.put(key, value);
     }
 
+    private volatile boolean freshInstall;
+
+    /**
+     * True when this instance was created because no config file existed. Transient by
+     * design: it is a fact about this launch, not about the user's preferences, and it
+     * must not be written into the file it describes.
+     */
+    public boolean isFreshInstall() {
+        return freshInstall;
+    }
+
+    public void setFreshInstall(boolean fresh) {
+        this.freshInstall = fresh;
+    }
+
     public Map<String, Object> unknownRoot() {
         synchronized (unknownRoot) {
             return new LinkedHashMap<>(unknownRoot);

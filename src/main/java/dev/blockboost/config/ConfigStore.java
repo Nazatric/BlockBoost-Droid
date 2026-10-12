@@ -66,6 +66,7 @@ public final class ConfigStore {
         if (!Files.exists(file)) {
             Settings s = Settings.defaults();
             s.markPreset("custom");
+            s.setFreshInstall(true);
             return new LoadResult(s, fromVersion, false, false, List.of("no config file yet; wrote defaults"), clamped);
         }
 
