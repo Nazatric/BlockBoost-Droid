@@ -1,0 +1,226 @@
+// ──────────────────────────────────────────────────────────────────────────────
+// BlockBoost — Android Performance Engine
+// Fabric mod build for Minecraft Java 26.1.2, JDK 25, Fabric Loom 1.18.x.
+//
+// Notes on the 26.1 toolchain (verified against the official Fabric docs and the
+// fabric-example-mod `26.1.2` branch):
+//   * Minecraft 26.1+ ships unobfuscated, so there is NO `mappings` dependency.
+//   * Mods are therefore not remapped: `jar` (not `remapJar`) is the final
+//     artifact, and mixin configs need no refmap for vanilla targets.
+//   * `modImplementation`/`modApi` are gone; plain `implementation`/`compileOnly`
+//     are used instead.
+// ──────────────────────────────────────────────────────────────────────────────
+
+plugins {
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+    id 'maven-publish'
+}
+
+repositories {
+    // Loom adds Mojang/Minecraft + Fabric repositories automatically. This extra
+    // repository is only used for the *compile-only* Mod Menu API, so that the
+    // optional Mod Menu integration can be type-checked without shipping it.
+    maven {
+        name = 'TerraformersMC'
+        url = 'https://maven.terraformersmc.com/'
+    }
+}
+
+loom {
+    splitEnvironmentSourceSets()
+
+    mods {
+        "blockboost" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    // The production client run (game test) needs Fabric API present at runtime as a
+    // real mod, not just as a compile-time classpath entry.
+    productionRuntimeMods "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+    // Optional integration: present at compile time only. The mod must load and
+    // work when Mod Menu is absent, so nothing here is `include`d or required.
+    compileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
+
+    // Fabric Loader JUnit gives unit tests a bootstrapped game classpath.
+    testImplementation "net.fabricmc:fabric-loader-junit:${project.loader_version}"
+    // The real jars, not the junit-jupiter aggregate module: under Gradle 9 with a
+    // Java 25 toolchain the aggregate's variant metadata refused to resolve, and
+    // api/engine/launcher is exactly what these tests use anyway.
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.11.4"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.11.4"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.11.4"
+}
+
+base {
+    archivesName = project.archives_name as String
+}
+
+def modVersionString = "${project.mod_version}+mc${project.minecraft_version}"
+
+processResources {
+    def version = modVersionString
+    inputs.property "version", version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 25
+    it.options.encoding = 'UTF-8'
+}
+
+java {
+    withSourcesJar()
+
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+jar {
+    def name = "${project.archives_name}-${modVersionString}.jar"
+    inputs.property "artifactName", name
+    archiveFileName = name
+
+    from("LICENSE") {
+        rename { "${it}_${project.archives_name}" }
+    }
+}
+
+test {
+    useJUnitPlatform()
+    // Keep CI output readable but complete.
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Development support: dump the exact, version-verified Minecraft API surface of
+// the classes BlockBoost hooks into. Because this repository is built in CI
+// (sandbox network access is limited), this task is how the mixin targets are
+// validated against the real 26.1.2 jar instead of guessed from older versions.
+// ──────────────────────────────────────────────────────────────────────────────
+tasks.register('dumpMinecraftApi') {
+    group = 'blockboost'
+    description = 'Writes javap signatures for the classes listed in tools/recon-classes.txt.'
+
+    def classListFile = file('tools/recon-classes.txt')
+    def outDir = layout.buildDirectory.dir('recon')
+    def clientClasspath = sourceSets.client.compileClasspath
+
+    inputs.file(classListFile)
+    outputs.dir(outDir)
+
+    doLast {
+        def out = outDir.get().asFile
+        out.mkdirs()
+
+        def mcJars = clientClasspath.files.findAll { File f ->
+            f.name.toLowerCase().contains('minecraft') && f.name.endsWith('.jar')
+        }
+        if (mcJars.isEmpty()) {
+            logger.warn("[blockboost-recon] No Minecraft jar found on the client compile classpath.")
+            new File(out, 'api.txt').text = "no minecraft jar found\n"
+            return
+        }
+
+        def cpString = clientClasspath.files.collect { it.absolutePath }.join(File.pathSeparator)
+        def javap = new File(System.getProperty('java.home'), 'bin/javap').absolutePath
+        def buffer = new StringBuilder()
+        def wanted = classListFile.readLines().collect { it.trim() }.findAll { !it.isEmpty() && !it.startsWith('#') }
+
+        buffer.append("# javap dump against jars:\n")
+        mcJars.forEach { f -> buffer.append("#   ").append(f.name).append("\n") }
+        buffer.append("\n")
+
+        // 1) Enumerate the real class names of subsystems we may hook into.
+        def pkgFile = file('tools/recon-packages.txt')
+        if (pkgFile.exists()) {
+            def prefixes = pkgFile.readLines().collect { it.trim() }.findAll { !it.isEmpty() && !it.startsWith('#') }
+            def names = new TreeSet<String>()
+            mcJars.each { File f ->
+                new java.util.zip.ZipFile(f).withCloseable { zip ->
+                    zip.entries().each { e ->
+                        if (!e.isDirectory() && e.name.endsWith('.class')) names.add(e.name)
+                    }
+                }
+            }
+            prefixes.each { String pfx ->
+                buffer.append("===== package listing: ").append(pfx).append(" =====\n")
+                def matches = names.findAll { it.startsWith(pfx) && !it.contains('$') }
+                matches.each { buffer.append(it.replace('net/', 'net/')).append("\n") }
+                buffer.append("(total: ").append(matches.size()).append(")\n\n")
+            }
+        }
+
+        // 2) Exact signatures for the classes listed in recon-classes.txt.
+        wanted.each { String cn ->
+            buffer.append("===== ").append(cn).append(" =====\n")
+            try {
+                def proc = [javap, '-p', '-s', '-cp', cpString, cn].execute()
+                def so = new StringBuilder()
+                def se = new StringBuilder()
+                proc.waitForProcessOutput(so, se)
+                buffer.append(so)
+                if (proc.exitValue() != 0) {
+                    buffer.append("!! javap exit ").append(proc.exitValue()).append(": ").append(se)
+                }
+            } catch (Throwable t) {
+                buffer.append("!! failed: ").append(t).append("\n")
+            }
+            buffer.append("\n")
+        }
+
+        new File(out, 'api.txt').text = buffer.toString()
+        logger.lifecycle("[blockboost-recon] wrote ${out}/api.txt (${buffer.length()} chars)")
+    }
+}
+
+publishing {
+    publications {
+        create("mavenJava", MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Client game test: boots the real client headlessly (virtual framebuffer in CI),
+// lets the mod initialize against a live render loop, and asserts the things that
+// cannot be asserted in a unit test: that the mixins applied, that every feature
+// evaluated without failing, that the config round-trips through a real game
+// directory, and that the client tick loop runs with our hooks installed.
+// Shape copied from fabric-docs reference/26.1.2/build.gradle (verified syntax).
+// ──────────────────────────────────────────────────────────────────────────────
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		modId = "blockboost-test"
+		// Server-side game tests are not part of this mod: it is client-only,
+		// and enabling them makes the harness configure a server run we never use.
+		enableGameTests = false
+		enableClientGameTests = true
+		eula = true // The game test harness starts a real client; this agrees to the Minecraft EULA for CI only.
+	}
+}
+
+tasks.register("runProductionClientGameTest", net.fabricmc.loom.task.prod.ClientProductionRunTask) {
+	jvmArgs.add("-Dfabric.client.gametest")
+	jvmArgs.add("-Dblockboost.gametest=1")
+	// Virtual framebuffer: needed on headless Linux runners, and it is also how we
+	// confirm the mod does not require a real GPU context just to initialize.
+	useXVFB = true
+}

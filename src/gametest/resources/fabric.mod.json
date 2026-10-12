@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "blockboost-test",
+  "version": "1.0.0",
+  "name": "BlockBoost Game Tests",
+  "description": "Client game tests that boot the real game with BlockBoost installed.",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-client-gametest": [
+      "dev.blockboost.gametest.BlockBoostClientGameTest"
+    ]
+  }
+}

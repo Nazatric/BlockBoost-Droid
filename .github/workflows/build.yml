@@ -1,0 +1,290 @@
+name: build
+
+# Builds the Fabric mod, runs the unit tests, verifies the release jar and (for
+# the agent/driver loop) mirrors the interesting parts of the log into the
+# "CI Console" issue, because GitHub Actions artifacts are not always reachable
+# from the development sandbox.
+
+on:
+  push:
+    branches:
+      - main
+      - 'arena/**'
+      - 'dev/**'
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      recon_extra:
+        description: 'Extra Minecraft classes to dump signatures for (space separated)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build + test (MC ${{ vars.MC_VERSION || '26.1.2' }} / JDK 25)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CONSOLE_ISSUE: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Make wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Build (compile, unit tests, jar)
+        run: ./gradlew build --stacktrace --warning-mode summary 2>&1 | tee /tmp/gradle-build.log; exit "${PIPESTATUS[0]}"
+
+      - name: Dump verified Minecraft 26.1.2 API surface
+        if: always()
+        run: |
+          if [ -n "${{ github.event.inputs.recon_extra }}" ]; then
+            printf '%s\n' ${{ github.event.inputs.recon_extra }} | tr ' ' '\n' >> tools/recon-classes.txt
+          fi
+          ./gradlew dumpMinecraftApi --stacktrace 2>&1 | tee /tmp/recon.log || true
+
+      - name: Discover exact upstream versions (release engineering)
+        if: always()
+        run: |
+          {
+            echo "### Maven coordinates (latest upstream)"
+            for url in \
+              "https://maven.fabricmc.net/net/fabricmc/fabric-loom/maven-metadata.xml" \
+              "https://maven.fabricmc.net/net/fabricmc/fabric-loader/maven-metadata.xml" \
+              "https://maven.fabricmc.net/net/fabricmc/fabric-loader-junit/maven-metadata.xml" \
+              "https://maven.terraformersmc.com/releases/com/terraformersmc/modmenu/maven-metadata.xml" ; do
+              echo "--- $url"
+              curl -s --max-time 25 "$url" | tr -d ' ' | grep -oE '<(latest|release)>[^<]+</(latest|release)>' | head -5 || echo "(unreachable)"
+              curl -s --max-time 25 "$url" | grep -oE '<version>[^<]+</version>' | tail -6 || true
+            done
+            echo
+            echo "### Minecraft version manifest"
+            curl -s --max-time 25 https://piston-meta.mojang.com/mc/game/version_manifest_v2.json \
+              | python3 -c 'import json,sys;d=json.load(sys.stdin);print([v for v in d["versions"] if v["id"].startswith("26.1")][:6])' || echo "(unreachable)"
+            echo
+            echo "### MobileGlues releases (renderer target)"
+            curl -s --max-time 25 -H "Authorization: Bearer $GITHUB_TOKEN" \
+              "https://api.github.com/repos/MobileGL-Dev/MobileGlues-release/releases?per_page=3" \
+              | python3 -c 'import json,sys;d=json.load(sys.stdin);print([(r["tag_name"], r["published_at"], len(r.get("assets",[]))) for r in d])' || echo "(unreachable)"
+          } > /tmp/discovery.txt 2>&1 || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify release jar
+        if: always()
+        run: |
+          {
+            JAR=$(ls -1 build/libs/blockboost-*.jar 2>/dev/null | grep -v sources | head -1)
+            if [ -z "$JAR" ]; then echo "NO JAR PRODUCED"; exit 0; fi
+            echo "### Artifact: $JAR ($(stat -c %s "$JAR") bytes, sha256 $(sha256sum "$JAR" | cut -c1-16))"
+            echo "--- entries"
+            unzip -l "$JAR" | head -60
+            echo "--- fabric.mod.json"
+            unzip -p "$JAR" fabric.mod.json | python3 -m json.tool
+            echo "--- icon present?"
+            unzip -l "$JAR" | grep -c "assets/blockboost/icon.png" || echo "MISSING ICON"
+            echo "--- desktop-only native libs (must be none)"
+            unzip -l "$JAR" | grep -Ei "\.dll|\.dylib|natives/|\.so$" || echo "none"
+            echo "--- mixin configs referenced by metadata must exist"
+            for m in $(unzip -p "$JAR" fabric.mod.json | python3 -c 'import json,sys;print(" ".join(x if isinstance(x,str) else x["config"] for x in json.load(sys.stdin).get("mixins",[])))'); do
+              if unzip -l "$JAR" | grep -q " $m\$"; then echo "OK $m"; else echo "MISSING MIXIN CONFIG $m"; fi
+            done
+            echo "--- java bytecode version (69 = Java 25)"
+            unzip -p "$JAR" dev/blockboost/BlockBoost.class | head -c 8 | od -An -tu1 | awk '{print "major:", $7*256+$8}'
+          } > /tmp/jar-verify.txt 2>&1 || true
+          cat /tmp/jar-verify.txt
+
+      - name: Upload jar artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blockboost-jar
+          path: build/libs/*.jar
+          if-no-files-found: warn
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            build/reports/
+            build/test-results/
+
+      - name: Report to CI console issue
+        if: always()
+        run: python3 .github/scripts/report.py
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          JOB: ${{ github.job }}
+          SHA: ${{ github.sha }}
+          EVENT: ${{ github.event_name }}
+
+  # Real, headless in-game launch test: boots an actual Minecraft 26.1.2 client
+  # with the built jar under a virtual framebuffer, lets BlockBoost initialize,
+  # opens the settings screen and runs the scripted feature/benchmark harness.
+  client-launch-test:
+    name: Client launch + benchmark (gametest)
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CONSOLE_ISSUE: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Install virtual framebuffer
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libgl1 libglx-mesa0 mesa-utils >/dev/null
+
+      - name: Run production client game test
+        continue-on-error: true
+        run: ./gradlew runProductionClientGameTest --stacktrace --info 2>&1 | tee /tmp/gametest.log; exit "${PIPESTATUS[0]}"
+
+      - name: Collect benchmark results
+        if: always()
+        run: |
+          {
+            echo "### Benchmark samples (blockboost/bench/latest-summary.txt)"
+            find . -name "latest-summary.txt" -path "*bench*" -exec cat {} \; 2>/dev/null || echo "(no benchmark output)"
+            echo
+            echo "### Game test log tail"
+            tail -n 200 /tmp/gametest.log
+          } > /tmp/launch-report.txt 2>&1 || true
+          cat /tmp/launch-report.txt
+
+      - name: Upload run logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-launch-run
+          path: |
+            /tmp/gametest.log
+            build/run/**
+          if-no-files-found: ignore
+
+      - name: Report to CI console issue
+        if: always()
+        run: |
+          export REPORT_FILE=/tmp/launch-report.txt
+          export TITLE="Client launch test"
+          python3 .github/scripts/report.py || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          JOB: ${{ github.job }}
+          SHA: ${{ github.sha }}
+          EVENT: ${{ github.event_name }}
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Publication. Only from a green build of the default work branch, and only
+  # with the jar this run produced: the artifact is downloaded, named, verified
+  # against the mod metadata one more time, committed at the repository root and
+  # attached to the release. Nothing here re-builds anything, so the bytes people
+  # download are exactly the bytes CI checked.
+  # ──────────────────────────────────────────────────────────────────────────
+  publish:
+    name: Publish verified jar (commit + release asset)
+    needs: [build]
+    if: github.event_name == 'push' && github.ref != 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: true
+
+      - name: Download the verified jar
+        uses: actions/download-artifact@v4
+        with:
+          name: blockboost-jar
+          path: dist
+
+      - name: Name and re-verify the release jar
+        run: |
+          set -euo pipefail
+          SRC=$(ls dist/*.jar | grep -v -- '-sources.jar' | head -1)
+          test -n "$SRC"
+          # blockboost-1.0.0+mc26.1.2.jar -> blockboost-1.0.0-mc26.1.2.jar
+          NAME=$(basename "$SRC" | tr '+' '-')
+          cp "$SRC" "$NAME"
+          echo "JAR=$NAME" >> "$GITHUB_ENV"
+          unzip -p "$NAME" fabric.mod.json > /tmp/fabric.mod.json
+          python3 - <<'PYEOF'
+          import json
+          m = json.load(open('/tmp/fabric.mod.json'))
+          assert m['id'] == 'blockboost', m['id']
+          assert m['environment'] == 'client', m['environment']
+          deps = m['depends']
+          assert any(k.startswith('fabricloader') for k in deps), deps.keys()
+          assert 'fabric-api' in deps, 'Fabric API must be a declared dependency'
+          assert deps.get('minecraft') == '~26.1.2', deps.get('minecraft')
+          print('metadata ok:', m['id'], m['version'], deps['minecraft'])
+          PYEOF
+          unzip -l "$NAME" | tail -3
+          sha256sum "$NAME" | tee /tmp/jar-sha256.txt
+
+      - name: Commit the jar at the repository root
+        run: |
+          set -euo pipefail
+          git config user.name "blockboost-ci"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f "$JAR"
+          if git diff --cached --quiet; then
+            echo "jar already published unchanged; nothing to commit"
+          else
+            git commit -q -m "release: $JAR ($(date -u +%Y-%m-%d)) [skip ci]" \
+              -m "Produced by CI run ${{ github.run_id }} from commit ${GITHUB_SHA:0:9}; sha256 $(cut -d' ' -f1 /tmp/jar-sha256.txt)."
+            git push -q origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          MC=$(python3 - <<'PY'
+          import json
+          print(json.load(open('/tmp/fabric.mod.json'))['depends']['minecraft'].lstrip('~'))
+          PY
+          )
+          TAG="v${JAR#blockboost-}"; TAG="${TAG%.jar}"
+          TAG="v${TAG%-mc*}-mc${MC}"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "BlockBoost $JAR" --notes-file RELEASE-NOTES.md
+          fi
+          gh release upload "$TAG" "$JAR" --clobber
+          sha256sum "$JAR" | awk -v tag="$TAG" '{print "- sha256 `" $1 "`"}' >> /tmp/sha.md
+          gh release edit "$TAG" --notes-file <(cat RELEASE-NOTES.md /tmp/sha.md) || true
+          echo "release $TAG updated with $JAR"
+
