@@ -14,7 +14,7 @@ public final class BlockBoostMod implements ModInitializer {
         // only honest signal available at this point.
         BlockBoostRuntime.get().start(false);
         if (net.fabricmc.loader.api.FabricLoader.getInstance().getEnvironmentType()
-                != net.fabricmc.loader.api.FabricLoader.EnvType.CLIENT) {
+                != net.fabricmc.api.EnvType.CLIENT) {
             BlockBoost.logInfo("loaded outside the client: this mod's systems are client-side"
                     + " and stay idle here by design");
         }

@@ -76,3 +76,9 @@ net.minecraft.client.gui.components.StringWidget
 net.minecraft.client.gui.components.ContainerObjectSelectionList
 net.minecraft.client.gui.layout.RowLayout
 net.minecraft.client.gui.screens.options.VideoSettingsScreen
+com.mojang.blaze3d.platform.FramerateLimitTracker
+net.minecraft.client.gui.components.debug.DebugEntry
+net.minecraft.client.gui.components.WidgetList
+net.minecraft.client.gui.components.CycleButton$Builder
+net.minecraft.client.gui.components.AbstractOptionSliderButton
+net.minecraft.client.gui.components.ContainerWidget

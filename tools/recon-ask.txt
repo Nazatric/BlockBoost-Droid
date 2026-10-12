@@ -1,22 +1,14 @@
-net\.minecraft\.client\.Minecraft##Font |getFont|public void stop|public void close|isPaused|public net.minecraft.client.multiplayer.ClientLevel|public net.minecraft.client.player.LocalPlayer|getMainWindow
-net\.minecraft\.client\.renderer\.chunk\..*##^class |^public class
-net\.minecraft\.client\.Options##getEffective|save\(|gamma|language|chatOpacity|aoMode|graphicsMode|fullscreen
-net\.minecraft\.client\.player\.(Abstract|Local)Player##public
-net\.minecraft\.client\.gui\.components\.(Slider|AbstractSliderButton)##public
-net\.minecraft\.client\.gui\.components\.EditBox##EditBox\(|public
-net\.minecraft\.client\.gui\.components\.Button\$Builder##bounds|create
-net\.minecraft\.client\.gui\.components\.CycleButton##public
-net\.minecraft\.client\.Window##public|getWidth|getHeight|getGuiScale|getFramebufferWidth|setVsync
-net\.minecraft\.client\.multiplayer\.ClientLevel##getBlockState|entitiesForRendering|getEntity\(|isClientSide
-net\.minecraft\.client\.gui\.Screen##public boolean should|public boolean isPause|public void extract|protected void init|onClose|public void render
-com\.mojang\.blaze3d\.platform\.Window##public int get|public double get|getGuiScale|getWidth|getHeight|isFocused|isMinimized
+# Questions asked of the javap dump (./gradlew dumpMinecraftApi), in priority order.
+# Format:  ClassRegex##MemberRegex  - capped per question (14 lines) and per report, so
+# ask for the members this project is about to call, not a class's whole surface.
+# An absent answer means the class regex found no section in the dump (see
+# tools/recon-classes.txt), not that the member is missing.
+com\.mojang\.blaze3d\.platform\.FramerateLimitTracker##public|class
+net\.minecraft\.client\.Minecraft##getFramerateLimitTracker|framerateLimitTracker|public static int fps|public int getFps
+com\.mojang\.blaze3d\.platform\.Window##public int get|public double get|getGuiScale|getWidth|getHeight|isFocused|isMinimized|FramerateLimitTracker
+net\.minecraft\.client\.gui\.components\.CycleButton\$Builder##public|create|build
+net\.minecraft\.client\.gui\.components\.AbstractOptionSliderButton##public|protected
+net\.minecraft\.client\.gui\.components\.Tooltip##public static|create
 package listing: net/minecraft/client/renderer/chunk##.
-package listing: net/minecraft/client/renderer/extract##.
-net\.minecraft\.client\.particle\.ParticleEngine##public void add|public .* add\(
-net\.minecraft\.client\.Options##^public net\.minecraft\.client\.OptionInstance
-net\.minecraft\.client\.gui\.components\.(Slider|CycleButton|CyclingButton)##public static|public .* create|builder|onValueChange|getValue|setValue
-net\.minecraft\.client\.gui\.components\.(MultilineTextWidget|StringWidget)##public|\(
-net\.minecraft\.client\.gui\.layout\..*##public
-package listing: net/minecraft/client/gui/layout##.
-net\.minecraft\.client\.gui\.components\.Tooltip##create
-net\.minecraft\.client\.OptionInstance##createButton|value|set\(|get\(
+net\.minecraft\.client\.renderer\.chunk\.ChunkSectionsToRender##public|class
+net\.minecraft\.client\.renderer\.LevelRenderer##prepareChunkRenders|allChanged|needsUpdate|public void tick
