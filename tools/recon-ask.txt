@@ -1,6 +1,3 @@
-# Questions asked of the javap dump (./gradlew dumpMinecraftApi), in priority order.
-# Format:  ClassRegex##MemberRegex  - capped per question and per report, so ask
-# for the members this project is about to call, not a class's whole surface.
 net\.minecraft\.client\.Minecraft##Font |getFont|public void stop|public void close|isPaused|public net.minecraft.client.multiplayer.ClientLevel|public net.minecraft.client.player.LocalPlayer|getMainWindow
 net\.minecraft\.client\.renderer\.chunk\..*##^class |^public class
 net\.minecraft\.client\.Options##getEffective|save\(|gamma|language|chatOpacity|aoMode|graphicsMode|fullscreen
@@ -17,3 +14,9 @@ package listing: net/minecraft/client/renderer/chunk##.
 package listing: net/minecraft/client/renderer/extract##.
 net\.minecraft\.client\.particle\.ParticleEngine##public void add|public .* add\(
 net\.minecraft\.client\.Options##^public net\.minecraft\.client\.OptionInstance
+net\.minecraft\.client\.gui\.components\.(Slider|CycleButton|CyclingButton)##public static|public .* create|builder|onValueChange|getValue|setValue
+net\.minecraft\.client\.gui\.components\.(MultilineTextWidget|StringWidget)##public|\(
+net\.minecraft\.client\.gui\.layout\..*##public
+package listing: net/minecraft/client/gui/layout##.
+net\.minecraft\.client\.gui\.components\.Tooltip##create
+net\.minecraft\.client\.OptionInstance##createButton|value|set\(|get\(

@@ -69,3 +69,10 @@ net.minecraft.client.player.LocalPlayer
 net.minecraft.resources.Identifier
 net.minecraft.util.Mth
 com.mojang.blaze3d.platform.Window
+net.minecraft.client.gui.components.CycleButton
+net.minecraft.client.gui.components.CyclingButton
+net.minecraft.client.gui.components.MultilineTextWidget
+net.minecraft.client.gui.components.StringWidget
+net.minecraft.client.gui.components.ContainerObjectSelectionList
+net.minecraft.client.gui.layout.RowLayout
+net.minecraft.client.gui.screens.options.VideoSettingsScreen

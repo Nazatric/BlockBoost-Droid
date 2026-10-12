@@ -11,3 +11,4 @@ net/minecraft/client/gui/components/
 net/minecraft/client/gui/screens/
 net/minecraft/client/renderer/
 net/minecraft/client/
+net/minecraft/client/gui/layout/
