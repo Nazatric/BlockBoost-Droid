@@ -164,9 +164,23 @@ jobs:
       - name: Install virtual framebuffer
         run: sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libgl1 libglx-mesa0 mesa-utils >/dev/null
 
-      - name: Run production client game test
-        continue-on-error: true
-        run: ./gradlew runProductionClientGameTest --stacktrace --info 2>&1 | tee /tmp/gametest.log; exit "${PIPESTATUS[0]}"
+      # Two different questions, two different runs.
+      #
+      # runGameTestClient runs the harness's own source set: it is the only place the mod's
+      # assertions execute (feature init, hot-path cost, the settings screen being laid out on
+      # a live client, config round-trip through a real game directory). Those assertions are
+      # allowed to fail the job - that is what they are for.
+      - name: Run the client game test (assertions)
+        run: ./gradlew runGameTestClient --stacktrace --info 2>&1 | tee /tmp/gametest.log; exit "${PIPESTATUS[0]}"
+
+      # runProductionClientGameTest runs the *shipped jar* with -Dfabric.client.gametest. It
+      # proves the remapped artifact launches and initializes inside a real game; it does not
+      # run the test class above, because the test code is not in the release jar and no
+      # fabric-client-gametest.json is shipped. Reading that run as "our tests passed" would
+      # be wrong, and it was: that is how a green launch job hid an assertion suite that never
+      # executed.
+      - name: Run the shipped jar in a real client (production boot)
+        run: ./gradlew runProductionClientGameTest --stacktrace --info 2>&1 | tee /tmp/production.log; exit "${PIPESTATUS[0]}"
 
       - name: Collect benchmark results
         if: always()
@@ -180,14 +194,16 @@ jobs:
               || echo "(no bench summary written)"
             echo
             echo "#### measurement lines (grep, not tail)"
-            grep -a "BlockBoost/test\|BlockBoost gametest\|settings_screen=\|hot_path=\|occlusion_probe=\|Auto profile" /tmp/gametest.log \
+            grep -a "BlockBoost/test\|BlockBoost gametest\|settings_screen=\|hot_path=\|occlusion_probe=\|Auto profile" /tmp/gametest.log /tmp/production.log \
               | head -40
             echo
             echo "#### failures / exceptions"
-            grep -a -i "assertionerror\|exception in thread\|FAILED\|quarantin" /tmp/gametest.log | head -30
+            grep -a -i "assertionerror\|exception in thread\|FAILED\|quarantin" /tmp/gametest.log /tmp/production.log | head -30
             echo
             echo "### Game test log tail"
-            tail -n 60 /tmp/gametest.log
+            tail -n 40 /tmp/gametest.log
+            echo "### Production boot log tail"
+            tail -n 40 /tmp/production.log
           } > /tmp/launch-report.txt 2>&1 || true
           cat /tmp/launch-report.txt
 
@@ -198,6 +214,7 @@ jobs:
           name: client-launch-run
           path: |
             /tmp/gametest.log
+            /tmp/production.log
             build/run/**
           if-no-files-found: ignore
 
@@ -280,8 +297,10 @@ jobs:
           print(json.load(open('/tmp/fabric.mod.json'))['depends']['minecraft'].lstrip('~'))
           PY
           )
-          TAG="v${JAR#blockboost-}"; TAG="${TAG%.jar}"
-          TAG="v${TAG%-mc*}-mc${MC}"
+          # blockboost-1.0.0-mc26.1.2.jar + MC 26.1.2 -> v1.0.0-mc26.1.2. Prefixing twice
+          # is how vv1.0.0 got published once already.
+          VER="${JAR#blockboost-}"; VER="${VER%.jar}"; VER="${VER%-mc*}"
+          TAG="v${VER}-mc${MC}"
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" --title "BlockBoost $JAR" --notes-file RELEASE-NOTES.md
           fi

@@ -73,10 +73,20 @@ us on real hardware. Verified so far, by CI on every push:
   cache and queue behaviour, percentile monotonicity, raycaster bounds and fail-open
   direction, preset validity, and packaging metadata (license, no network APIs, no other
   project's imports, every declared mixin class present)
-* **a client game test that boots the actual game** (`runProductionClientGameTest`): the
-  mod initializes, mixins apply, six subsystems report `ACTIVE` with zero feature failures,
-  a world loads and ticks 40 game ticks with our hooks installed, and the config round-trips
-  through a real game directory. That run happens on a software framebuffer under Xvfb.
+* **a client game test that boots the actual game** (`runGameTestClient`): the mod
+  initializes, mixins apply, the subsystems report `ACTIVE` with zero feature failures, the
+  visibility hot path is timed over 2000 decisions inside one frame budget, every section of
+  the settings screen is opened and required to lay out controls, and the config round-trips
+  through a real game directory. That run happens on a software framebuffer under Xvfb, so
+  its timings are a regression check and not a device benchmark.
+* **the shipped jar launched in a real client** (`runProductionClientGameTest`), which proves
+  the remapped artifact initializes inside a game without the test harness around it. It runs
+  no assertions — the test code is deliberately not in the release jar.
+
+  Correction, because it matters for how much to trust earlier notes: until this build the
+  launch job only ran the production boot, so the assertion suite above had never executed in
+  CI even where its results were described as if it had. Both runs are wired now, and the job
+  fails on an assertion.
 
 Not tested: a physical Mali GPU, MobileGlues/GL4ES/LTW/Zink translation behaviour, shader
 packs, long-session thermal or battery effect, and any dedicated-server scenario beyond

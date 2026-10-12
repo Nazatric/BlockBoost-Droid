@@ -129,12 +129,15 @@ Real numbers on real Android hardware: **not measured, and not claimed.** This r
 phone, and a software framebuffer in CI is not a proxy for a thermal-limited SoC. Anything on this
 point would be fabricated, so instead:
 
-* **What CI does measure**, on every push, inside a live client:
-  `runProductionClientGameTest` runs the hot path — 2000 visibility decisions in one frame budget —
-  and asserts it stays under 8 ms, logging the per-decision microseconds and the occlusion probe
-  state; it then walks every section of the settings screen and requires that rows get laid out, and
-  asserts that every feature initialized without throwing. That is a regression test, not a benchmark,
-  and its summary says so in its own header.
+* **What CI does measure**, on every push, inside a live client. `runGameTestClient` runs the mod's
+  own assertions on a real, running game: the hot path — 2000 visibility decisions inside one frame
+  budget, asserted under 8 ms, with the per-decision microseconds and the occlusion probe state
+  logged; a walk of every section of the settings screen requiring that rows actually get laid out;
+  every feature initializing without throwing; and a config round-trip through a real game
+  directory. Separately, `runProductionClientGameTest` boots the **shipped jar** in a real client,
+  which proves the remapped artifact launches and initializes but runs none of those assertions
+  (the test code is not in the release jar). Both run on a software framebuffer under Xvfb: that is
+  a regression test, not a benchmark, and the summary it writes says so in its own header.
 * **Unit tests** pin the behaviour that is easy to get wrong silently: the frame cap and vsync can
   never appear in an automatic patch, values the advisor writes are always schema-valid, the pools
   drop instead of growing, a throwing task cannot kill a worker, the occupancy cache stays bounded.
