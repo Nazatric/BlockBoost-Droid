@@ -1,11 +1,15 @@
 package dev.blockboost.gametest;
 
 import java.nio.file.Files;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import java.nio.file.Path;
 import java.util.List;
 
 import net.minecraft.client.Minecraft;
 
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -39,8 +43,10 @@ public final class BlockBoostClientGameTest implements FabricClientGameTest {
 
     @Override
     public void runTest(ClientGameTestContext context) {
-        Minecraft client = Minecraft.getInstance();
-        assertTrue(client != null, "no client instance in a client game test");
+        // The harness is strict about this and right to be: Minecraft.getInstance() from the
+        // game-test thread throws. Anything that touches the client goes through onClientThread.
+        assertTrue(Boolean.TRUE.equals(onClientThread(context, () -> Minecraft.getInstance() != null)),
+                "no client instance in a client game test");
 
         // 1) The mod initialized on the client side at all.
         BlockBoostRuntime runtime = BlockBoostRuntime.get();
@@ -96,29 +102,34 @@ public final class BlockBoostClientGameTest implements FabricClientGameTest {
             assertFalse(runtime.registry().isQuarantined(FeatureId.ENTITY_CULLING),
                     "entity culling was quarantined at runtime: " + registry.reason(FeatureId.ENTITY_CULLING));
             context.takeScreenshot("blockboost-world");
-            measureHotPath(context);
+            onClientThread(context, () -> {
+                measureHotPath(context);
+                return null;
+            });
         }
 
         // 7) The settings screen is hand-built layout code: it compiles and still shows
         //    nothing, or throws on the first tap. Open it on the live client and walk every
         //    section, which is the only way to know the widgets actually get laid out.
-        int laidOut = 0;
-        try {
-            dev.blockboost.client.ui.BlockBoostSettingsScreen screen =
-                    (dev.blockboost.client.ui.BlockBoostSettingsScreen)
-                            dev.blockboost.client.ui.BlockBoostSettingsScreen.create(null);
-            client.setScreen(screen);
-            assertTrue(client.screen == screen, "setScreen did not take the mod's screen");
-            for (int i = 0; i < 10; i++) {
-                screen.nextTab();
-                laidOut += screen.laidOutRows();
-                assertTrue(client.screen == screen, "the screen closed itself moving to tab " + i);
+        int laidOut = onClientThread(context, () -> {
+            Minecraft client = Minecraft.getInstance();
+            int laid = 0;
+            try {
+                dev.blockboost.client.ui.BlockBoostSettingsScreen screen =
+                        (dev.blockboost.client.ui.BlockBoostSettingsScreen)
+                                dev.blockboost.client.ui.BlockBoostSettingsScreen.create(null);
+                client.setScreen(screen);
+                assertTrue(client.screen == screen, "setScreen did not take the mod's screen");
+                for (int i = 0; i < 10; i++) {
+                    screen.nextTab();
+                    laid += screen.laidOutRows();
+                    assertTrue(client.screen == screen, "the screen closed itself moving to tab " + i);
+                }
+            } finally {
+                client.setScreen(null);
             }
-            client.setScreen(null);
-        } catch (AssertionError | Exception e) {
-            client.setScreen(null);
-            throw new AssertionError("settings screen unusable: " + e, e);
-        }
+            return laid;
+        });
         assertTrue(laidOut > 0, "the settings screen laid out no rows on any tab");
         screenNote = "tabs walked, rows=" + laidOut;
 
@@ -126,14 +137,14 @@ public final class BlockBoostClientGameTest implements FabricClientGameTest {
         List<String> report = BlockBoostRuntime.get().startupNotes();
         assertTrue(report != null, "startup notes must not be null");
 
-        writeSummary(client, runtime, registry);
+        writeSummary(runtime, registry);
     }
 
     /**
      * The artifact CI collects. Deliberately small: it is a "did the game run with us
      * inside it" record, not a benchmark, and it says so in its own header.
      */
-    private void writeSummary(Minecraft client, BlockBoostRuntime runtime, FeatureRegistry registry) {
+    private void writeSummary(BlockBoostRuntime runtime, FeatureRegistry registry) {
         try {
             Path dir = net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir()
                     .resolve("blockboost").resolve("bench");
@@ -228,6 +239,55 @@ public final class BlockBoostClientGameTest implements FabricClientGameTest {
 
     public static String hotPathNote() {
         return hotPathNote;
+    }
+
+    private static final AtomicReference<Object[]> PENDING = new AtomicReference<>();
+    private static volatile boolean dispatcherInstalled;
+
+    /**
+     * Runs {@code body} on the client thread and waits for its result.
+     *
+     * <p>The harness offers helpers for this, but their names and shapes have moved between
+     * versions, and this project does not write against remembered APIs - including in its
+     * tests. The Fabric client tick event is the one entry point already verified for 26.1.2
+     * (the mod itself registers it), so the hand-off goes through that: the test thread parks
+     * on a latch while the game ticks, the handler runs the block where it is legal to touch
+     * {@code Minecraft}, and anything thrown comes back as a failure of the test rather than a
+     * swallowed log line.
+     */
+    private static <T> T onClientThread(ClientGameTestContext context, Supplier<T> body) {
+        if (!dispatcherInstalled) {
+            dispatcherInstalled = true;
+            ClientTickEvents.END_CLIENT_TICK.register(client -> {
+                Object[] handoff = PENDING.getAndSet(null);
+                if (handoff == null) {
+                    return;
+                }
+                try {
+                    @SuppressWarnings("unchecked")
+                    Supplier<Object> work = (Supplier<Object>) handoff[0];
+                    handoff[1] = work.get();
+                } catch (Throwable t) {
+                    handoff[2] = t;
+                } finally {
+                    ((CountDownLatch) handoff[3]).countDown();
+                }
+            });
+        }
+        CountDownLatch done = new CountDownLatch(1);
+        Object[] handoff = new Object[] {body, null, null, done};
+        PENDING.set(handoff);
+        for (int i = 0; i < 600 && done.getCount() > 0; i++) {
+            context.waitTick();
+        }
+        assertTrue(done.getCount() == 0, "the client thread never ran the block (600 ticks waited)");
+        if (handoff[2] != null) {
+            Throwable t = (Throwable) handoff[2];
+            throw new AssertionError("block threw on the client thread: " + t, t);
+        }
+        @SuppressWarnings("unchecked")
+        T value = (T) handoff[1];
+        return value;
     }
 
     private static void assertTrue(boolean condition, String message) {
