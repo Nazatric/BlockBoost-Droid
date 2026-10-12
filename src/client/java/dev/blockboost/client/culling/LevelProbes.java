@@ -112,7 +112,7 @@ public final class LevelProbes {
                     } else if (params.length == 1) {
                         handle = MethodHandles.dropArguments(handle, 2, Object.class);
                     }
-                    BlockBoost.logInfo("[BlockBoost] block opacity query: " + method.getName()
+                    BlockBoost.logInfo("block opacity query: " + method.getName()
                             + "(" + params.length + " args)");
                     return new Found(handle, method.getName());
                 }

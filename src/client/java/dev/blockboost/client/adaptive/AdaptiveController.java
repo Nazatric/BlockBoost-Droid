@@ -206,7 +206,7 @@ public final class AdaptiveController implements AutoCloseable {
         level = next;
         lastChangeMs = System.currentTimeMillis();
         recommendation = "applied '" + LADDER[next].name() + "' (level " + (next + 1) + "/" + LADDER.length + ")";
-        BlockBoost.logInfo("[BlockBoost] adaptive: " + recommendation);
+        BlockBoost.logInfo("adaptive: " + recommendation);
         services.markAdaptiveApplied(next);
     }
 
@@ -223,7 +223,7 @@ public final class AdaptiveController implements AutoCloseable {
         lastChangeMs = System.currentTimeMillis();
         recommendation = "relaxed to level " + (appliedLevel + 1) + " ("
                 + (appliedLevel == 0 ? "your settings" : LADDER[appliedLevel].name()) + ")";
-        BlockBoost.logInfo("[BlockBoost] adaptive: " + recommendation);
+        BlockBoost.logInfo("adaptive: " + recommendation);
         services.markAdaptiveApplied(appliedLevel);
     }
 
@@ -318,7 +318,7 @@ public final class AdaptiveController implements AutoCloseable {
         appliedLevel = next;
         lastChangeMs = System.currentTimeMillis();
         VanillaOptions.persist(client);
-        BlockBoost.logInfo("[BlockBoost] adaptive: applied '" + LADDER[next].name() + "' on request");
+        BlockBoost.logInfo("adaptive: applied '" + LADDER[next].name() + "' on request");
     }
 
     public void forceRestore(Minecraft client) {

@@ -113,7 +113,7 @@ public final class ChunkPipelineFeature implements Feature {
             shrinkStreak++;
             if (shrinkStreak >= 2 && render > floor) {
                 int next = Math.max(floor, render - 2);
-                BlockBoost.logInfo("[BlockBoost] chunk backlog guard: " + render + " -> " + next
+                BlockBoost.logInfo("chunk backlog guard: " + render + " -> " + next
                         + " render distance (frames " + String.format(java.util.Locale.ROOT, "%.1f", mean) + " ms)");
                 VanillaOptions.renderDistance(client, next);
                 VanillaOptions.simulationDistance(client, Math.max(2, next - 2));

@@ -152,7 +152,7 @@ public final class ClientServices implements FeatureEnvironment, AutoCloseable {
         }
         if (settings.bool(ConfigSchema.MEM_HEAP_REPORT) && client.level != null
                 && (t % (20L * 60L * 5L)) == 0L) {
-            BlockBoost.logInfo("[BlockBoost] heap " + device.heapSummary() + " " + gc.hudLine());
+            BlockBoost.logInfo("heap " + device.heapSummary() + " " + gc.hudLine());
         }
     }
 
